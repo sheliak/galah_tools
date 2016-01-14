@@ -2,7 +2,7 @@ THIS IS GALAH_TOOLS README
 
 1. Licence
 
-Copyright (C) 2015  Janez Kos
+Copyright (C) 2016  Janez Kos
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -28,53 +28,4 @@ This code comes with the setup script.
 
 3. Description
 
-This code includes some tools for accessing and using galah spectra. 
-
-4. How to use
-
-- Import the module with:
-
-import galah_tools as gtools
-
-- Setup your system with:
-
-gtools.setup(root_folder='./test/iraf_dr50')
-
-In this case a folder is specified where the reduced spectra are saved. It assumes the same structure that is used on the ftp site. Alternative is to specify a folder where spectra are saved with no hirearchy:
-
-gtools.setup(folder='./test/random_spectra')
-
-- If you know the name of the spectrum, you can get it by:
-
-spectrum=gtools.read('1402070012010052')
-
-Spectrum will be an object. To get the wavelengths and fluxes, you can do:
-
-wavelength=spectrum.l
-flux=spectrum.f
-
-This will produce an array of wavelengths and a coresponding array of fluxes at each wavelength.
-
-- Setup a system with a database. You can either use sql or a csv file. For the sql, run the setup with a specified connection to the sql server:
-
-setup(root_folder='./test/iraf_dr50', con=mdb.connect("dbname=hermes_database user=janez"))
-
-And for the csv file, just give the location:
-
-gtools.setup(root_folder='./test/iraf_dr50', csv='./test/db/iraf_dr50.csv')
-
-Now you have some methods available with the spectrum class:
-
-- Which extension to use (by default you get a normalized spectrum)
-
-- In what velocity reference frame do you want the spectrum
-    - Object's reference frame
-    - Barycentric reference frame
-    - Observer reference frame TBD
-    - LSR reference frame TBD
-
-- Shift a spectrum for some velocity
-
-- Reinterpolate a spectrum to your wavelength array
-
-- Normalize a spectrum in a simple way
+See test.py and the comments therein.
