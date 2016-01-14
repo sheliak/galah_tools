@@ -1,0 +1,11 @@
+#windows can be given in 2 different formats. One is by providing lower and upper limit of the window and the other is providing the center and the width of the window. Both formats must be separated by an emty line. Parameters of the window are separated by tab (\t).
+#In both cases a smooth parameter can be given. It tells the part of the window that will be smooted. 0 means a sharp window and 1 means a triangular window.
+#Value tells the weight of the window. 0.5, for example, means that fluxes in the window will be weighted down by 50%. Negative values mean that everything except the region given by the window will be weighted down.
+#If more tha 1 window is given, they are multiplied together.
+#
+#lower	upper	smooth	value
+6552.0	6573.0	0.2	0.5
+
+#center	width	smooth	value
+6613.8	3	0	0
+6613	70	0.4	-0.6
