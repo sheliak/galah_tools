@@ -46,7 +46,11 @@ class spectrum:
 		if con!='':
 			cur=con.cursor()
 			cur.execute("select v from iraf_dr50 where name=%s" % self.name)
-			self.v=float(cur.fetchone()[0])
+			try:
+				self.v=float(cur.fetchone()[0])
+			except TypeError:
+				print ' ! Warning: no velocity in the database. Assuming v=0.'
+				self.v=0.0
 		else:
 			self.v=float(setup.db_dict[self.name]['v'])
 
@@ -99,36 +103,15 @@ class spectrum:
 		find nearest neighbours. spectra2pickle must be run first
 		windows is a filename with the description of windows to use or a 1D np.ndarray
 		"""
-		if pickle_folder[-1]=='/': pickle_folder=pickle_folder[:-1]
-		
-		try:
-			space=pickle.load(open('%s/space.pickle' % (pickle_folder), 'rb'))
-			f=np.interp(space,self.l,self.f)
-			l=space
-		except:
-			raise RuntimeError('Pickle spectra first if you want to use nearest neighbour search. No wavelength samling is saved.')
 
-		blocks=[]
-		for path, dirs, files in os.walk(os.path.abspath(pickle_folder)):
-			for filename in fnmatch.filter(files, 'b*.pickle'):
-				blocks.append(filename)
+		if pspectra.names==0:
+			pspectra(pickle_folder)
 
-		if len(blocks)==0:
-			raise RuntimeError('Pickle spectra first if you want to use nearest neighbour search. No pickled spectra saved.')
+		spectra=pspectra.spectra
+		names=pspectra.names
+		l=pspectra.space
 
-		spectra_frompickle=[]
-		for i in blocks:
-			spectra_frompickle=spectra_frompickle+pickle.load(open('%s/%s' % (pickle_folder,i), 'rb'))
-
-		names=[]
-		spectra=[]
-
-		for i in spectra_frompickle:
-			names.append(i[0])
-			spectra.append(i[1])
-
-		spectra=np.array(spectra)
-		names=np.array(names)
+		f=np.interp(l,self.l,self.f)
 
 		#check if window function already exists:
 		if type(windows).__name__=='ndarray':#if given as an array only check if format is right
@@ -167,6 +150,43 @@ class spectrum:
 			dist,ind=kdtree_index.index.query(f*window,K,p=distance[d])
 
 			return names[ind], dist
+
+class pspectra:
+	spectra=0
+	names=0
+	space=[]
+
+	def __init__(self,pickle_folder):
+		if pickle_folder[-1]=='/': pickle_folder=pickle_folder[:-1]
+
+		try:
+			pspectra.space=pickle.load(open('%s/space.pickle' % (pickle_folder), 'rb'))
+			#f=np.interp(space,self.l,self.f)
+			#l=space
+		except:
+			raise RuntimeError('Pickle spectra first if you want to use nearest neighbour search. No wavelength samling is saved.')
+
+		blocks=[]
+		for path, dirs, files in os.walk(os.path.abspath(pickle_folder)):
+			for filename in fnmatch.filter(files, 'b*.pickle'):
+				blocks.append(filename)
+
+		if len(blocks)==0:
+			raise RuntimeError('Pickle spectra first if you want to use nearest neighbour search. No pickled spectra saved.')
+
+		spectra_frompickle=[]
+		for i in blocks:
+			spectra_frompickle=spectra_frompickle+pickle.load(open('%s/%s' % (pickle_folder,i), 'rb'))
+
+		names=[]
+		spectra=[]
+
+		for i in spectra_frompickle:
+			names.append(i[0])
+			spectra.append(i[1])
+
+		pspectra.spectra=np.array(spectra)
+		pspectra.names=np.array(names)
 
 class window_function:
 	window=[]
@@ -313,7 +333,7 @@ def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spe
 	if pickle_folder[-1]=='/': pickle_folder=pickle_folder[:-1]
 
 	#using pickle to store data can be dangerous. Display warning
-	print ' Warning: using pickle to store data can be dangerous. Use at your own risk!'
+	print ' ! Warning: using pickle to store data can be dangerous. Use at your own risk!'
 
 	#check if defined space is valid for the given ccd:
 	if ccd==1:
@@ -352,15 +372,15 @@ def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spe
 			block=[]
 		try:#if there is no normalized spectrum skip it
 			s=read(i, kind='norm', wavelength='default').interpolate(space)
+			block.append([i,s.f])
+			n+=1
 		except RuntimeError:
 			pass
-		block.append([i,s.f])
-		n+=1
 		nn+=1
 
 		if nn>=limit: break# stop reading spectra if limit is reached (to spare the memory or time when testing)
 
-		print nn, '/', len(spectra), "pickled."
+		if nn%10 == 0: print nn, '/', len(spectra), "pickled."
 
 	
 	pickle.dump(block,open('%s/b%s.pickle' % (pickle_folder,block_num+1), 'wb'))
