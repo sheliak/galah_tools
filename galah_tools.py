@@ -128,13 +128,17 @@ class spectrum:
 		else:#if it exists just use it
 			window=window_function.window
 
+		#create a mask where window==0, because there we don't have to comapre the vectors, because the difference is always 0:
+		mask=np.array(window,dtype=bool)
+
+
 		if method=='FLANN':
 			distance={'manhattan': 'manhattan', 'euclidean': 'euclidean'}
 
 			if flann_index.flann==False: 
-				flann_index(spectra*window, distance[d])
+				flann_index(spectra[:,mask]*window[mask], distance[d])
 			
-			ind,dist=flann_index.flann.nn_index(f*window,K,checks=flann_index.index['checks'])
+			ind,dist=flann_index.flann.nn_index(f[mask]*window[mask],K,checks=flann_index.index['checks'])
 
 			if distance[d]=='euclidean':
 				return names[ind], np.sqrt(dist)
@@ -145,9 +149,9 @@ class spectrum:
 			distance={'manhattan': 1, 'euclidean': 2}
 
 			if kdtree_index.index==False:
-				kdtree_index(spectra*window)
+				kdtree_index(spectra[:,mask]*window[mask])
 
-			dist,ind=kdtree_index.index.query(f*window,K,p=distance[d])
+			dist,ind=kdtree_index.index.query(f[mask]*window[mask],K,p=distance[d])
 
 			return names[ind], dist
 
@@ -289,7 +293,9 @@ def read_windows(filename,l):
 		if line[0]=='#': pass
 		else:
 			data=line[:-1].split('\t')
+			sign=data[-1][0]
 			data=map(float,data)
+			data=data+[sign]
 			if writeto==0:
 				windows.append(data)
 			else:
@@ -297,10 +303,10 @@ def read_windows(filename,l):
 
 	#transform one format into the other
 	for i in windows:
-		cwindows.append([(i[0]+i[1])/2.0, i[1]-i[0], i[2], i[3]])
+		cwindows.append([(i[0]+i[1])/2.0, i[1]-i[0], i[2], i[3], i[4]])
 
 	for w in cwindows:
-		if w[3]>=0:
+		if w[4]!='-':
 			for n,i in enumerate(l):
 				if abs(w[0]-i)<=(w[1]/2.0*(1-w[2])): window[n]*=w[3]
 				elif (w[0]+w[1]/2.0*(1-w[2]))<i<(w[0]+w[1]/2.0): window[n]*=(2-2*w[3])/(w[1]*w[2])*i+1-(1-w[3])/w[2]*(2*w[0]/w[1]+1)
