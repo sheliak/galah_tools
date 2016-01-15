@@ -7,6 +7,8 @@ import fnmatch
 import cPickle as pickle
 from pyflann import *
 from scipy import spatial
+import ftputil
+import getpass
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
@@ -28,9 +30,31 @@ class spectrum:
 		else:
 			path=setup.folder+self.name+'.fits'
 		
-
-		hdulist = pyfits.open(path)
-
+		try:#read if it exists
+			hdulist = pyfits.open(path)
+		except:#otherwise download
+			if setup.download:
+				print ' - Spectrum %s not found. Serching in downloaded spectra.' % self.name
+				try:
+					path=setup.folder+self.name+'.fits'
+					hdulist = pyfits.open(path)
+					print ' + Spectrum %s already downloaded.' % self.name
+				except:
+					print ' - Spectrum %s not found. Downloading from the ftp.' % self.name
+					try:
+						with ftputil.FTPHost('site-ftp.aao.gov.au', 'galah', getpass.getpass()) as host:
+							if self.combine_method>=1:
+								host.download('reductions/Iraf_5.0/%s/combined/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
+							else:
+								host.download('reductions/Iraf_5.0/%s/individual/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
+							path=setup.folder+self.name+'.fits'
+							hdulist = pyfits.open(path)
+						print ' + Spectrum %s succesfully downloaded.' % self.name
+					except:
+						print ' + Spectrum %s failed to download.' % self.name
+			else:
+				print ' - Spectrum %s not found. Enable download to get it from the ftp site.' % self.name
+		
 		instance={'norm':4, 'normalized':4, 'flux':0, 'fluxed':0}
 
 		try:
@@ -252,6 +276,7 @@ class setup:
 	con=''
 	csv=''
 	db_dict={}
+	download=False
 
 	def __init__(self, **kwargs):
 		for key in kwargs:
@@ -267,6 +292,9 @@ class setup:
 
 			if key=='con':
 				setup.con=kwargs['con']
+
+			if key=='download':
+				setup.download=kwargs['download']
 
 			if key=='csv':
 				setup.csv=kwargs['csv']
