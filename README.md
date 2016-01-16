@@ -14,10 +14,8 @@ This will make the `galah_tools` module available system-wide.
 
 A short test scrip is provided to test the basic funcionality and the search for nearest neighbours. See the contest of the `test.py` and run it with
 
- ```{r, engine='python'}
-import galah_tools as gtools
-
-gtools.setup(folder='./test/random_spectra', csv='test/db/iraf_dr50.csv')
+ ```{r, engine='bash'}
+python test.py
 ```
 
 See the contest of `test/windows.txt` to learn how to set up windows and ranges used in nearest neighbour search.
@@ -35,7 +33,11 @@ The environment is set up by calling the setup function. At least two parameters
 
 The following example set-ups the environment where the spectra are stored in a single folder with no hirearchy and the csv dump is used as a database.
 
+ ```{r, engine='python'}
+import galah_tools as gtools
 
+gtools.setup(folder='./test/random_spectra', csv='test/db/iraf_dr50.csv')
+```
 
 #Licence
 
