@@ -149,12 +149,12 @@ If a weight at a certain pixel is zero, the pixel will be filtered out and the n
 names, distances=s.knn(K, windows, method, d, pickle_folder)
 ```
 Ony the first argument is mandatory.
-*`K` is the number of neighbours you want (must be smaller or equal to number of spectra)
-*`windows` is a filename where windows and ranges are defined
-*`method={KDTRee}{FLANN}` tells which method to use
-*`d={manhattan}{euclidean}` tells what metric to use
-*`pickle_folder` is the name of the folder where pickled spectra are saved. Default is `./pickled_spectra`
-*`names` and `distances` are arrays with the nearest neighbours arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
+* `K` is the number of neighbours you want (must be smaller or equal to number of spectra)
+* `windows` is a filename where windows and ranges are defined
+* `method={KDTRee}{FLANN}` tells which method to use
+* `d={manhattan}{euclidean}` tells what metric to use
+* `pickle_folder` is the name of the folder where pickled spectra are saved. Default is `./pickled_spectra`
+* `names` and `distances` are arrays with the nearest neighbours arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
 
 
 #Licence
