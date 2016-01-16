@@ -88,15 +88,15 @@ When spectrum is downloaded from the GALAH ftp site it is saved in the `folder` 
 ##Spectrum class
 
 The class has the following attributes:
-*`s.l` is the wavelength array
-*`s.f` is the flux array
-*`s.name` is the name of the spectrum (the same one you use to read the spectrum)
-*`s.ccd` is the ccd number for this spectrum
-*`s.date` is the yymmdd date mark
-*`s.run` is the run number
-*`s.combine_method` is the combine metod (integer)
-*`s.pivot` is the pivot number
-*`s.v` is the radial velocity (as measured by GUESS)
+* `s.l` is the wavelength array
+* `s.f` is the flux array
+* `s.name` is the name of the spectrum (the same one you use to read the spectrum)
+* `s.ccd` is the ccd number for this spectrum
+* `s.date` is the yymmdd date mark
+* `s.run` is the run number
+* `s.combine_method` is the combine metod (integer)
+* `s.pivot` is the pivot number
+* `s.v` is the radial velocity (as measured by GUESS)
 
 ##Modyfing spectra
 
