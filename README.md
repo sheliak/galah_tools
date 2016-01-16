@@ -72,6 +72,8 @@ Several arguments can be given to control the properties of the spectrum:
 * `log={True} {False}` If you want to use the log spacing in the wavelength set this to `True`. **Not yet implemented. Do not use.**
 * `wavelength={'default'} {'observer'}, {'object'}, {'bary'}` This controls in what velocity space you want the spectrum. `'default'` gives whatever is in the fits file. `'observer'` returns a spectrum with the wavelengths as measured from the arc lamp, uncorrected for the barucentric velocity. `'object'` gives the wavelengths corrected for the barycentric velocity and the radial velocity of the star (as measured by GUESS). `'bary'` gives the wavelengths corrected for the barycentric velocity. **Please, use only `'object'` for now. Other options have not been tested yet or are in the development**
 
+When spectrum is downloaded from the GALAH ftp site it is saved in the `folder` or `root_folder`, whichever is defined.
+
 ##Spectrum class
 
 The class has the following attributes:
