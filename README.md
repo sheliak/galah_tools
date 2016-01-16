@@ -144,6 +144,12 @@ Weights can also be given as a 1D numpy array of the same length as the spectra 
 
 If a weight at a certain pixel is zero, the pixel will be filtered out and the nearest neighbour search will be able to work with fewer dimensions, so it will be faster. Consider this when setting weights to values close to zero.
 
+Windows can be retrieved from the file and, for example, plottted:
+```python
+w=gtools.window_function(l, 'test/windows.txt')
+w.plot_window()
+```
+
 ###Running the nearest neighbour search
 ```python
 names, distances=s.knn(K, windows, method, d, pickle_folder)
