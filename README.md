@@ -15,7 +15,7 @@ A folder `galah_tools` will be created
 
 A setup.py file is provided. The module can be installed in the usual way by running
 
-```{r, engine='bash'}
+```bash
 cd galah_tools
 sudo python setup.py install 
 ```
@@ -25,7 +25,7 @@ This will make the `galah_tools` module available system-wide.
 
 A short test scrip is provided to test the basic funcionality and the search for nearest neighbours. See the contest of the `test.py` and run it with
 
- ```{r, engine='bash'}
+ ```bash
 python test.py
 ```
 
@@ -90,6 +90,7 @@ When spectrum is downloaded from the GALAH ftp site it is saved in the `folder` 
 The class has the following attributes:
 * `s.l` is the wavelength array
 * `s.f` is the flux array
+* `s.fe` is the error spectrum
 * `s.name` is the name of the spectrum (the same one you use to read the spectrum)
 * `s.ccd` is the ccd number for this spectrum
 * `s.date` is the yymmdd date mark
