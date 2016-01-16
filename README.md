@@ -74,7 +74,51 @@ Several arguments can be given to control the properties of the spectrum:
 
 ##Spectrum class
 
+The class has the following attributes:
+*`s.l` is the wavelength array
+*`s.f` is the flux array
+*`s.name` is the name of the spectrum (the same one you use to read the spectrum)
+*`s.ccd` is the ccd number for this spectrum
+*`s.date` is the yymmdd date mark
+*`s.run` is the run number
+*`s.combine_method` is the combine metod (integer)
+*`s.pivot` is the pivot number
+*`s.v` is the radial velocity (as measured by GUESS)
+
 ##Modyfing spectra
+
+Spectra can be quickly modified (shifted for a specified v, normalized, etc.). A universal synatx is:
+```python
+s.modifier(args)
+```
+This will rewrite the attributes of the opened spectrum. If you want to save the modified spectrum into a different variable, you have to hard copy it. 
+
+###Normalization
+**TO DO**
+
+###Radial velocity shift
+```python
+s.shift(rv, linearize=True)
+```
+Shift for `rv`, given in km/s. If `linearize=True`, linearize the wavelength scale. If False it will remain as is after the rv shift is applied, regardless the `linearize` parameter when opening the spectra in the first place.
+
+###Add noise
+```python
+s.add_noise(snr, target_snr, skip=True)
+```
+Change the SNR of the spectrum from `snr` to `target_snr`. If `target_snr>=snr`, `skip` is checked. If True, nothing will happen and the SNR will remain as is. If set to False an error will pop up.
+
+**To do: read the original snr from the database or from the error spectrum. Give option to decide which snr to use.**
+
+###Interpolate
+```python
+s.interpolate(space)
+```
+Interpolate the spectrum into a given `space`. `space` can be any 1D list or array filled with numeric values. `s.l` will be changed into space and `s.f` will be lineary interpolated.
+
+##Other methods
+
+##Finding nearest neighbours
 
 #Licence
 
