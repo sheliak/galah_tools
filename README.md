@@ -59,6 +59,14 @@ gtools.setup(folder='./', csv='test/db/iraf_dr50.csv', download=True)
 
 ##Reading the spectra
 
+Spectrum can be read by calling its name (a string or an int can be used)
+
+```python
+s=gtools.read('1402070012010053')
+```
+
+Several arguments can be given to control the properties of the spectrum:
+* `kind={'norm{alized}'} {'flux{ed}'}} {'nosky'}` to retrieve the normalized or fluxed spectrum or the spectrum before the sky subtraction.
 
 
 #Licence
