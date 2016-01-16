@@ -9,11 +9,16 @@ from pyflann import *
 from scipy import spatial
 import ftputil
 import getpass
+import copy
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
 		
 		#set atributes
+		if isinstance(name, basestring):
+			pass
+		else:
+			name=str(int(name))
 		self.name = name
 		self.ccd=int(self.name[-1])
 		self.date=int(self.name[:6])
@@ -107,8 +112,24 @@ class spectrum:
 
 		return self
 
-	def add_noise(self,noise):
-		pass
+	def add_noise(self, snr, target_snr,skip=True):
+		"""
+		Adds poissonian noise to make a spectrum with snr into a spectrum with target_snr.
+		"""
+		if skip and target_snr>snr:#do not raise error if target_snr is larger than snr. Do nothing instead
+			return self
+
+		if target_snr>snr:
+			raise RuntimeError('Target SNR cannot be larger than the original SNR.')
+		elif target_snr==snr: 
+			return self
+		else:
+			sigma=np.sqrt((1.0/target_snr)**2-(1.0/snr)**2)
+			noise=np.random.poisson((1.0/sigma)**2, size=len(self.f))
+			noise=noise/((1.0/sigma)**2)
+			self.f+=noise
+
+			return self
 
 	def interpolate(self,space):
 		"""
