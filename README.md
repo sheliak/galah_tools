@@ -120,6 +120,24 @@ Interpolate the spectrum into a given `space`. `space` can be any 1D list or arr
 
 ##Finding nearest neighbours
 
+There are currently two methods available for finding nearest neighbours; scipy's KNN and FLANN. 
+
+###Pickilng spectra
+
+It is mandatory to pickle the spectra before the nearest neighbour search is called. Pickling spectra means that they will be read into the memory and the correct part of the memory will be saved to the hard drive in a pickle format. Reading the spectra initially takes around an hour for all the GALAH spectra and reading back the pickled spectra takes minutes. So from there on, you will only have to wait minutes every time you run the nearest neighbour search instead of an hour. If you run several nearest neighbour searches in one script, the pickled spectra will be read only ones and saved in the memory until the script is terminated.
+
+Spectra can be pickled by running
+```python
+l=gtools.spectra2pickle(ccd, space, limit, pickle_folder)
+```
+Only the first argument is mandatory, telling spectra for which arm to pickle. `space` can be a wavelength sampling into which the spectra will be interpolated, `limit` is a maximum number of spectra to pickle, usable for testing pourposes, and `pickle_folder` is the name of the folder where pickled spectra will be saved. By default this is `./pickled_spectra`. The wavelength space `l` is returned if pickling if successful.
+
+10000 spectra will be saved in the same pickle object. If there are more spectra to pickle, they will be saved into several files. In addition, the wavelength space is saved too.
+
+**Pickled objects should never be sent over the internet or exchanged with untrustworthy people, because there is no safety check when they are read back into the memory!**
+
+
+
 #Licence
 
 Copyright (C) 2015  Janez Kos
