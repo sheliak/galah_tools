@@ -39,6 +39,28 @@ import galah_tools as gtools
 gtools.setup(folder='./test/random_spectra', csv='test/db/iraf_dr50.csv')
 ```
 
+The second option is to use the same folder structure as on the ftp site for the spectra storage and an sql database instead of csv table. This will also be faster. Any combination of these options can be used.
+
+ ```python
+import galah_tools as gtools
+import psycopg2 as mdb #this is the preffered module to use with the postgre sql database
+
+gtools.setup(root_folder='./test/iraf_dr50', con=mdb.connect("dbname=hermes_master user=janez"))
+```
+Notice that instead of `folder` parameter we used `root_folder`. 
+
+If you want to use spectra that are not saved in your local system, you can give `galah_tools` a permission to download them on the go. They will be downloaded from the ftp site and you will be prompted for the password. 
+
+```python
+import galah_tools as gtools
+
+gtools.setup(folder='./', csv='test/db/iraf_dr50.csv', download=True)
+```
+
+##Reading the spectra
+
+
+
 #Licence
 
 Copyright (C) 2015  Janez Kos
