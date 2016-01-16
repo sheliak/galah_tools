@@ -33,7 +33,7 @@ The environment is set up by calling the setup function. At least two parameters
 
 The following example set-ups the environment where the spectra are stored in a single folder with no hirearchy and the csv dump is used as a database.
 
- ```{r, engine='python'}
+ ```python
 import galah_tools as gtools
 
 gtools.setup(folder='./test/random_spectra', csv='test/db/iraf_dr50.csv')
