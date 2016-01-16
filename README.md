@@ -122,7 +122,7 @@ Interpolate the spectrum into a given `space`. `space` can be any 1D list or arr
 
 There are currently two methods available for finding nearest neighbours; scipy's KNN and FLANN. 
 
-###Pickilng spectra
+###Pickling spectra
 
 It is mandatory to pickle the spectra before the nearest neighbour search is called. Pickling spectra means that they will be read into the memory and the correct part of the memory will be saved to the hard drive in a pickle format. Reading the spectra initially takes around an hour for all the GALAH spectra and reading back the pickled spectra takes minutes. So from there on, you will only have to wait minutes every time you run the nearest neighbour search instead of an hour. If you run several nearest neighbour searches in one script, the pickled spectra will be read only ones and saved in the memory until the script is terminated.
 
@@ -130,12 +130,31 @@ Spectra can be pickled by running
 ```python
 l=gtools.spectra2pickle(ccd, space, limit, pickle_folder)
 ```
-Only the first argument is mandatory, telling spectra for which arm to pickle. `space` can be a wavelength sampling into which the spectra will be interpolated, `limit` is a maximum number of spectra to pickle, usable for testing pourposes, and `pickle_folder` is the name of the folder where pickled spectra will be saved. By default this is `./pickled_spectra`. The wavelength space `l` is returned if pickling if successful.
+Only the first argument is mandatory, telling spectra for which arm to pickle. `space` can be a wavelength sampling into which the spectra will be interpolated, `limit` is a maximum number of spectra to pickle, usable for testing pourposes, and `pickle_folder` is the name of the folder where pickled spectra will be saved. By default this is `./pickled_spectra`. The wavelength space `l` is returned if pickling is successful.
 
 10000 spectra will be saved in the same pickle object. If there are more spectra to pickle, they will be saved into several files. In addition, the wavelength space is saved too.
 
 **Pickled objects should never be sent over the internet or exchanged with untrustworthy people, because there is no safety check when they are read back into the memory!**
 
+###Defining windows and ranges
+
+When looking for nearest neighbours, you want to give different weights to different parts of the spectrum. We provide a simple tool for defining the weights in a text file. See `test/windows.txt` for the description and examples.
+
+Weights can also be given as a 1D numpy array of the same length as the spectra are. 
+
+If a weight at a certain pixel is zero, the pixel will be filtered out and the nearest neighbour search will be able to work with fewer dimensions, so it will be faster. Consider this when setting weights to values close to zero.
+
+###Running the nearest neighbour search
+```python
+names, distances=s.knn(K, windows, method, d, pickle_folder)
+```
+Ony the first argument is mandatory.
+*`K` is the number of neighbours you want (must be smaller or equal to number of spectra)
+*`windows` is a filename where windows and ranges are defined
+*`method={KDTRee}{FLANN}` tells which method to use
+*`d={manhattan}{euclidean}` tells what metric to use
+*`pickle_folder` is the name of the folder where pickled spectra are saved. Default is `./pickled_spectra`
+*`names` and `distances` are arrays with the nearest neighbours arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
 
 
 #Licence
