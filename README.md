@@ -21,6 +21,8 @@ sudo python setup.py install
 ```
 This will make the `galah_tools` module available system-wide.
 
+For the installation of FLANN see http://www.cs.ubc.ca/~mariusm/uploads/FLANN/manual.pdf
+
 ##Test
 
 A short test scrip is provided to test the basic funcionality and the search for nearest neighbours. See the contest of the `test.py` and run it with
