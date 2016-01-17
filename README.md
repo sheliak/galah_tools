@@ -90,7 +90,7 @@ When spectrum is downloaded from the GALAH ftp site it is saved in the `folder` 
 The class has the following attributes:
 * `s.l` is the wavelength array
 * `s.f` is the flux array
-* `s.fe` is the error spectrum
+* `s.fe` is the error spectrum array
 * `s.name` is the name of the spectrum (the same one you use to read the spectrum)
 * `s.ccd` is the ccd number for this spectrum
 * `s.date` is the yymmdd date mark
@@ -114,7 +114,7 @@ This will rewrite the attributes of the opened spectrum. If you want to save the
 ```python
 s.shift(rv, linearize=True)
 ```
-Shift for `rv`, given in km/s. If `linearize=True`, linearize the wavelength scale. If False it will remain as is after the rv shift is applied, regardless the `linearize` parameter when opening the spectra in the first place.
+Shift for `rv`, given in km/s. If `linearize=True`, linearize the wavelength scale. If False it will remain as is after the rv shift is applied, regardless the `linearize` parameter when opening the spectrum in the first place.
 
 ###Add noise
 ```python
