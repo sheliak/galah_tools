@@ -1,5 +1,5 @@
 #GALAH TOOLS PACKAGE
-Galah tools package is a python module enabling an easy acces to GALAH spectra and some products. It also includes several useful tools for manipulating and analysing the spectra.
+Galah tools package is a python module enabling an easy access to GALAH spectra and some products. It also includes several useful tools for manipulating and analyzing the spectra.
 
 ##Download
 
@@ -11,7 +11,7 @@ git clone https://github.com/sheliak/galah_tools.git
 
 A folder `galah_tools` will be created
 
-##Instalation
+##Installation
 
 A setup.py file is provided. The module can be installed in the usual way by running
 
@@ -25,13 +25,13 @@ For the installation of FLANN see http://www.cs.ubc.ca/~mariusm/uploads/FLANN/ma
 
 ##Test
 
-A short test scrip is provided to test the basic funcionality and the search for nearest neighbours. See the contest of the `test.py` and run it with
+A short test scrip is provided to test the basic functionality and the search for nearest neighbors. See the contest of the `test.py` and run it with
 
  ```bash
 python test.py
 ```
 
-See the contest of `test/windows.txt` to learn how to set up windows and ranges used in nearest neighbour search.
+See the contest of `test/windows.txt` to learn how to set up windows and ranges used in nearest neighbor search.
 
 
 #Usage instructions
@@ -40,11 +40,11 @@ See the contest of `test/windows.txt` to learn how to set up windows and ranges 
 
 Before you start exploiting the `galah_tools` module, you have to set the working environment. This way the module will know where to look for the spectra and where to look for the data tables. 
 
-This software comes with no data tables and with spectra of only two random stars, because it is publicly available, unlike the spectra or tables. You will need the acces to GALAH data to use this software.
+This software comes with no data tables and with spectra of only two random stars, because it is publicly available, unlike the spectra or tables. You will need the access to GALAH data to use this software.
 
 The environment is set up by calling the setup function. At least two parameters must be given: folder where the spectra are stored and connection to the database.
 
-The following example set-ups the environment where the spectra are stored in a single folder with no hirearchy and the csv dump is used as a database.
+The following example set-ups the environment where the spectra are stored in a single folder with no hierarchy and the csv dump is used as a database.
 
  ```python
 import galah_tools as gtools
@@ -56,7 +56,7 @@ The second option is to use the same folder structure as on the ftp site for the
 
  ```python
 import galah_tools as gtools
-import psycopg2 as mdb #this is the preffered module to use with the postgre sql database
+import psycopg2 as mdb #this is the preferred module to use with the postgre sql database
 
 gtools.setup(root_folder='./test/iraf_dr50', con=mdb.connect("dbname=hermes_master user=janez"))
 ```
@@ -83,7 +83,7 @@ Several arguments can be given to control the properties of a spectrum:
 * `extension={0}{2}{4}` to retrieve a spectrum from the specific fits extension. 0=fluxed, 2=spectrum before the sky subtraction and 4=normalized.
 * `linearize={True} {False}` If you want to force the spectrum to have a linearized sampling set to True. Otherwise you will get whatever is written in the fits file.
 * `log={True} {False}` If you want to use the log spacing in the wavelength set this to `True`. **Not yet implemented. Do not use.**
-* `wavelength={'default'} {'observer'}, {'object'}, {'bary'}` This controls in what velocity space you want the spectrum. `'default'` gives whatever is in the fits file. `'observer'` returns a spectrum with the wavelengths as measured from the arc lamp, uncorrected for the barucentric velocity. `'object'` gives the wavelengths corrected for the barycentric velocity and the radial velocity of the star (as measured by GUESS). `'bary'` gives the wavelengths corrected for the barycentric velocity. **Please, use only `'object'` for now. Other options have not been tested yet or are in the development**
+* `wavelength={'default'} {'observer'}, {'object'}, {'bary'}` This controls in what velocity space you want the spectrum. `'default'` gives whatever is in the fits file. `'observer'` returns a spectrum with the wavelengths as measured from the arc lamp, uncorrected for the barycentric velocity. `'object'` gives the wavelengths corrected for the barycentric velocity and the radial velocity of the star (as measured by GUESS). `'bary'` gives the wavelengths corrected for the barycentric velocity. **Please, use only `'object'` for now. Other options have not been tested yet or are in the development**
 
 When spectrum is downloaded from the GALAH ftp site it is saved in the `folder` or `root_folder`, whichever is defined.
 
@@ -101,9 +101,9 @@ The class has the following attributes:
 * `s.pivot` is the pivot number
 * `s.v` is the radial velocity (as measured by GUESS)
 
-##Modyfing spectra
+##Modifying spectra
 
-Spectra can be quickly modified (shifted for a specified v, normalized, etc.). A universal synatx is:
+Spectra can be quickly modified (shifted for a specified v, normalized, etc.). A universal syntax is:
 ```python
 s.modifier(args)
 ```
@@ -130,23 +130,23 @@ Change the SNR of the spectrum from `snr` to `target_snr`. If `target_snr>=snr`,
 ```python
 s.interpolate(space)
 ```
-Interpolate the spectrum into a given `space`. `space` can be any 1D list or array filled with numeric values. `s.l` will be changed into space and `s.f` will be lineary interpolated.
+Interpolate the spectrum into a given `space`. `space` can be any 1D list or array filled with numeric values. `s.l` will be changed into space and `s.f` will be linearly interpolated.
 
 ##Other methods
 
-##Finding nearest neighbours
+##Finding nearest neighbors
 
-There are currently two methods available for finding nearest neighbours; scipy's KNN and FLANN. 
+There are currently two methods available for finding nearest neighbors; scipy's KNN and FLANN. 
 
 ###Pickling spectra
 
-It is mandatory to pickle the spectra before the nearest neighbour search is called. Pickling spectra means that they will be read into the memory and the correct part of the memory will be saved to the hard drive in a pickle format. Reading the spectra initially takes around an hour for all the GALAH spectra and reading back the pickled spectra takes minutes. So from there on, you will only have to wait minutes every time you run the nearest neighbour search instead of an hour. If you run several nearest neighbour searches in one script, the pickled spectra will be read only ones and saved in the memory until the script is terminated.
+It is mandatory to pickle the spectra before the nearest neighbor search is called. Pickling spectra means that they will be read into the memory and the correct part of the memory will be saved to the hard drive in a pickle format. Reading the spectra initially takes around an hour for all the GALAH spectra and reading back the pickled spectra takes minutes. So from there on, you will only have to wait minutes every time you run the nearest neighbor search instead of an hour. If you run several nearest neighbor searches in one script, the pickled spectra will be read only ones and saved in the memory until the script is terminated.
 
 Spectra can be pickled by running
 ```python
 l=gtools.spectra2pickle(ccd, space, limit, pickle_folder)
 ```
-Only the first argument is mandatory, telling spectra for which arm to pickle. `space` can be a wavelength sampling into which the spectra will be interpolated, `limit` is a maximum number of spectra to pickle, usable for testing pourposes, and `pickle_folder` is the name of the folder where pickled spectra will be saved. By default this is `./pickled_spectra`. The wavelength space `l` is returned if pickling is successful.
+Only the first argument is mandatory, telling spectra for which arm to pickle. `space` can be a wavelength sampling into which the spectra will be interpolated, `limit` is a maximum number of spectra to pickle, usable for testing purposes, and `pickle_folder` is the name of the folder where pickled spectra will be saved. By default this is `./pickled_spectra`. The wavelength space `l` is returned if pickling is successful.
 
 10000 spectra will be saved in the same pickle object. If there are more spectra to pickle, they will be saved into several files. In addition, the wavelength space is saved too.
 
@@ -154,29 +154,29 @@ Only the first argument is mandatory, telling spectra for which arm to pickle. `
 
 ###Defining windows and ranges
 
-When looking for nearest neighbours, you want to give different weights to different parts of the spectrum. We provide a simple tool for defining the weights in a text file. See `test/windows.txt` for the description and examples.
+When looking for nearest neighbors, you want to give different weights to different parts of the spectrum. We provide a simple tool for defining the weights in a text file. See `test/windows.txt` for the description and examples.
 
 Weights can also be given as a 1D numpy array of the same length as the spectra are. 
 
-If a weight at a certain pixel is zero, the pixel will be filtered out and the nearest neighbour search will be able to work with fewer dimensions, so it will be faster. Consider this when setting weights to values close to zero.
+If a weight at a certain pixel is zero, the pixel will be filtered out and the nearest neighbor search will be able to work with fewer dimensions, so it will be faster. Consider this when setting weights to values close to zero.
 
-Windows can be retrieved from the file and, for example, plottted:
+Windows can be retrieved from the file and, for example, plotted:
 ```python
 w=gtools.window_function(l, 'test/windows.txt')
 w.plot_window()
 ```
 
-###Running the nearest neighbour search
+###Running the nearest neighbor search
 ```python
 names, distances=s.knn(K, windows, method, d, pickle_folder)
 ```
-Ony the first argument is mandatory.
-* `K` is the number of neighbours you want (must be smaller or equal to number of spectra)
+Only the first argument is mandatory.
+* `K` is the number of neighbors you want (must be smaller or equal to number of spectra)
 * `windows` is a filename where windows and ranges are defined
 * `method={KDTRee}{FLANN}` tells which method to use
 * `d={manhattan}{euclidean}` tells what metric to use
 * `pickle_folder` is the name of the folder where pickled spectra are saved. Default is `./pickled_spectra`
-* `names` and `distances` are arrays with the nearest neighbours arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
+* `names` and `distances` are arrays with the nearest neighbors arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
 
 
 #Licence
