@@ -76,7 +76,7 @@ Spectrum can be read by calling its name (a string or an int can be used)
 s=gtools.read('1402070012010053')
 ```
 
-Several arguments can be given to control the properties of the spectrum:
+Several arguments can be given to control the properties of a spectrum:
 * `kind={'norm{alized}'} {'flux{ed}'}} {'nosky'}` to retrieve the normalized or fluxed spectrum or the spectrum before the sky subtraction.
 * `extension={0}{2}{4}` to retrieve a spectrum from the specific fits extension. 0=fluxed, 2=spectrum before the sky subtraction and 4=normalized.
 * `linearize={True} {False}` If you want to force the spectrum to have a linearized sampling set to True. Otherwise you will get whatever is written in the fits file.
