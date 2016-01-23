@@ -29,6 +29,7 @@ class spectrum:
 		#read spectrum
 		self.l=-1
 		self.f=-1
+		self.fe=-1
 
 		if setup.folder_is_root:
 			path=setup.folder+str(self.date)+'/combined/'+self.name+'.fits'
@@ -64,6 +65,10 @@ class spectrum:
 
 		try:
 			self.f=hdulist[instance[kind]].data
+			if instance[kind]==4:
+				self.fe=hdulist[1].data
+			else:
+				self.fe=hdulist[instance[kind+1]].data
 			crval=hdulist[instance[kind]].header['CRVAL1']
 			crdel=hdulist[instance[kind]].header['CDELT1']
 			self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
@@ -95,6 +100,7 @@ class spectrum:
 		#linearize
 		if linearize==True:
 			self.f=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.f)
+			self.fe=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
 		else:
 			pass
 
@@ -106,6 +112,7 @@ class spectrum:
 		l=self.l*(1-self.v/299792.458)
 		if linearize==True:
 			self.f=np.interp(np.linspace(l[0],l[-1],num=len(l)),l,self.f)
+			self.fe=np.interp(np.linspace(l[0],l[-1],num=len(l)),l,self.fe)
 			self.l=np.linspace(l[0],l[-1],num=len(l))
 		else:
 			self.l=l
@@ -128,6 +135,7 @@ class spectrum:
 			noise=np.random.poisson((1.0/sigma)**2, size=len(self.f))
 			noise=noise/((1.0/sigma)**2)
 			self.f+=noise
+			self.fe+=1.0/noise
 
 			return self
 
@@ -137,6 +145,7 @@ class spectrum:
 		"""
 		space=np.array(space)
 		self.f=np.interp(space,self.l,self.f)
+		self.fe=np.interp(space,self.l,self.fe)
 		self.l=space
 		return self
 
