@@ -61,20 +61,6 @@ class spectrum:
 			else:
 				print ' - Spectrum %s not found. Enable download to get it from the ftp site.' % self.name
 		
-		instance={'norm':4, 'normalized':4, 'flux':0, 'fluxed':0}
-
-		try:
-			self.f=hdulist[instance[kind]].data
-			if instance[kind]==4:
-				self.fe=hdulist[1].data
-			else:
-				self.fe=hdulist[instance[kind+1]].data
-			crval=hdulist[instance[kind]].header['CRVAL1']
-			crdel=hdulist[instance[kind]].header['CDELT1']
-			self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
-		except:
-			raise RuntimeError('Cannot read spectrum. Fits extension might be missing.')
-
 		#set velocity frame
 		con=setup.con
 		if con!='':
@@ -88,6 +74,33 @@ class spectrum:
 		else:
 			self.v=float(setup.db_dict[self.name]['v'])
 
+		#set l, f, and fe
+		instance={'norm':4, 'normalized':4, 'flux':0, 'fluxed':0}
+
+		try:
+			self.f=hdulist[instance[kind]].data
+			if instance[kind]==4:
+				self.fe=hdulist[1].data
+			else:
+				self.fe=hdulist[instance[kind]+1].data
+			crval=hdulist[instance[kind]].header['CRVAL1']
+			crdel=hdulist[instance[kind]].header['CDELT1']
+			self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
+			
+			if instance[kind]==4:
+				#because normalized spec doesn't has its error, we use the fluxed error, but have to shift and interpolate it to normalized l:
+				crval=hdulist[1].header['CRVAL1']
+				crdel=hdulist[1].header['CDELT1']
+				naxis=hdulist[1].header['NAXIS1']
+				error_l=np.linspace(crval, crval+crdel*naxis, naxis)
+				error_l=error_l*(1-self.v/299792.458)
+				self.fe=np.interp(self.l,error_l,self.fe)
+
+			
+		except:
+			raise RuntimeError('Cannot read spectrum. Fits extension might be missing.')
+		
+		#shift into correct velocity frame
 		if wavelength=='default':
 			pass
 		elif wavelength=='observer' and instance[kind]==4:
