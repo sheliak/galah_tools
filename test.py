@@ -9,7 +9,7 @@ import psycopg2 as mdb
 #Chose one way (only one) of setting the working environment. This software comes without a database, because it is public. The database must be downloaded from a proper GALAH webpage/ ftp site.
 
 #1. Here we set the folder where data is in standard folders and a connection to the sql database
-gtools.setup(root_folder='/home/janez/fax/galah/tools/test/iraf_dr50', con=mdb.connect("dbname=hermes_master user=janez"), download=True)
+gtools.setup(root_folder='./test/iraf_dr50', con=mdb.connect("dbname=hermes_master user=janez"), download=True)
 
 #2. Here we set a folder where all the spectra are collected without any hierarchy. We set the csv file as a source of database. 
 #gtools.setup(folder='/home/janez/fax/galah/tools/test/random_spectra', csv='test/db/iraf_dr50.csv')
