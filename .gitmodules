@@ -1,0 +1,3 @@
+[submodule "sclip"]
+	path = sclip
+	url = https://github.com/sheliak/sclip.git

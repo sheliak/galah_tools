@@ -10,6 +10,7 @@ from scipy import spatial
 import ftputil
 import getpass
 import copy
+from sclip.sclip import sclip
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
