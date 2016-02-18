@@ -111,13 +111,13 @@ This will rewrite the attributes of the opened spectrum. If you want to save the
 
 ###Normalization
 
-The spectrum can be normalized with a selecton of function and with an iterative sigma clipping algorithm:
+The spectrum can be normalized with a selecton of functions and with an iterative sigma clipping algorithm:
 
 ```python
 s.normalize(deg,n,func,sl,su,grow=0,smooth=5e6)
 ```
 
-* `deg` is the degree of the normalization function or spline (3 for qubic plines).
+* `deg` is the degree of the normalization function or spline (3 for qubic splines).
 * `n` is the maximum number of iterations. The sigma clipping algorithm can converge sooner.
 * `func` is the name of the fitting function. It can be `cheb`, `poly`, or `spline` for a Chebyshev polynomial, normal polynomial or a spline. 
 * `sl` and `su` ar the lower and upper rejection limits in sigma units.
