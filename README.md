@@ -123,11 +123,11 @@ s.normalize(deg,n,func,sl,su,grow=0,smooth=5e6)
 * `sl` and `su` ar the lower and upper rejection limits in sigma units.
 * `grow` is the growing radius for rejecting points. If one point is rejected, `grow` number of nearest points left and right from the rejected point are also rejected.
 * `smooth` smoothing factor for the spline function used to choose the number of knots. Number of knots will be increased until the smoothing condition is satisfied:
-
 ```
-sum((w[i] * (y[i]-spl(x[i])))**2, axis=0) <= s
+sum(((y[i]-spline(x[i])))**2, axis=0) <= smooth
 ```
 
+The fitted function is returned sampled the same way as the spectrum.
 
 ###Radial velocity shift
 ```python
