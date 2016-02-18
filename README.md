@@ -110,7 +110,24 @@ s.modifier(args)
 This will rewrite the attributes of the opened spectrum. If you want to save the modified spectrum into a different variable, you have to hard copy it. 
 
 ###Normalization
-**TO DO**
+
+The spectrum can be normalized with a selecton of function and with an iterative sigma clipping algorithm:
+
+```python
+s.normalize(deg,n,func,sl,su,grow=0,smooth=5e6)
+```
+
+* `deg` is the degree of the normalization function or spline (3 for qubic plines).
+* `n` is the maximum number of iterations. The sigma clipping algorithm can converge sooner.
+* `func` is the name of the fitting function. It can be `cheb`, `poly`, or `spline` for a Chebyshev polynomial, normal polynomial or a spline. 
+* `sl` and `su` ar the lower and upper rejection limits in sigma units.
+* `grow` is the growing radius for rejecting points. If one point is rejected, `grow` number of nearest points left and right from the rejected point are also rejected.
+* `smooth` smoothing factor for the spline function used to choose the number of knots. Number of knots will be increased until the smoothing condition is satisfied:
+
+```
+sum((w[i] * (y[i]-spl(x[i])))**2, axis=0) <= s
+```
+
 
 ###Radial velocity shift
 ```python
@@ -179,7 +196,7 @@ Only the first argument is mandatory.
 * `names` and `distances` are arrays with the nearest neighbors arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
 
 
-#Licence
+#License
 
 Copyright (C) 2015  Janez Kos
 
