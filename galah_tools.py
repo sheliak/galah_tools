@@ -11,6 +11,9 @@ import ftputil
 import getpass
 import copy
 from sclip.sclip import sclip
+from scipy.interpolate import UnivariateSpline
+import scipy
+from scipy import signal
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
@@ -163,8 +166,92 @@ class spectrum:
 		self.l=space
 		return self
 
-	def normalize(self):
-		pass
+	def normalize(self,deg,n,func,sl,su,grow=0,smooth=4e6):
+		"""
+		calculate the normalization for the spectrum and normalize
+		"""
+		functions.deg=deg
+
+		if func=='cheb' or func=='chebyshev':
+			result=sclip((self.l,self.f),chebyshev,int(n),su=su,sl=sl,min_data=100,verbose=False)
+			self.f=self.f/result[0]
+
+		if func=='poly':
+			result=sclip((self.l,self.f),poly,int(n),su=su,sl=sl,min_data=100,verbose=False)
+			self.f=self.f/result[0]
+
+		if func=='spline':
+			functions.smooth=smooth
+			result=sclip((self.l,self.f),spline,int(n),su=su,sl=sl,min_data=100,verbose=False)
+			self.f=self.f/result[0]
+
+		return result[0]
+
+	def convolve(self,fwhm,extend=False):
+		"""
+		decrease resolution by convolving the spectrum with a gaussian
+		returns the kernel
+		"""
+
+		#check if wavelength calibration is linear:
+		if (self.l[1]-self.l[0])==(self.l[-1]-self.l[-2]):
+			linear=True
+		else:
+			linear=False
+
+		if linear:
+			step=self.l[1]-self.l[0]
+			kernel=gauss_kern(fwhm/step)
+			add_dim=len(kernel)
+
+			if extend==True:
+				f=np.insert(self.f,0,np.ones(add_dim)*self.f[0])
+				f=np.append(f,np.ones(add_dim)*self.f[-1])
+				fe=np.insert(self.fe,0,np.ones(add_dim)*self.fe[0])
+				fe=np.append(fe,np.ones(add_dim)*self.fe[-1])
+				self.f=signal.fftconvolve(f,kernel,mode='same')[add_dim:-add_dim]
+				self.fe=signal.fftconvolve(fe**2,kernel,mode='same')[add_dim:-add_dim]
+				self.fe=np.sqrt(self.fe)
+
+			else:
+				self.f=signal.fftconvolve(self.f,kernel,mode='same')
+				self.fe=signal.fftconvolve(self.fe**2,kernel,mode='same')
+				self.fe=np.sqrt(self.fe)
+		else:
+			raise Warning('wavelength scale is not linear. Impossible to perform convolution')
+
+		return kernel
+
+	def median_filter(self,size, extend=False):
+		"""
+		do a standard median filtering. give size in Angstroms, will be translated to nearest odd number of pixels.
+		"""
+		#check if wavelength calibration is linear:
+		if (self.l[1]-self.l[0])==(self.l[-1]-self.l[-2]):
+			linear=True
+		else:
+			linear=False
+
+		if linear:
+			step=self.l[1]-self.l[0]
+			add_dim=int(np.ceil(size/step // 2 * 2 + 1))
+
+			if extend==True:
+				f=np.insert(self.f,0,np.ones(add_dim)*self.f[0])
+				f=np.append(f,np.ones(add_dim)*self.f[-1])
+				fe=np.insert(self.fe,0,np.ones(add_dim)*self.fe[0])
+				fe=np.append(fe,np.ones(add_dim)*self.fe[-1])
+				self.f=signal.medfilt(f,add_dim)[add_dim:-add_dim]
+				self.fe=signal.medfilt(fe,add_dim,)[add_dim:-add_dim]
+				self.fe=self.fe/np.sqrt(add_dim)
+
+			else:
+				self.f=signal.medfilt(self.f,add_dim)
+				self.fe=signal.medfilt(self.fe,add_dim)
+				self.fe=self.fe/np.sqrt(add_dim)
+		else:
+			raise Warning('wavelength scale is not linear. Impossible to perform median filtering')
+
 
 	def knn(self,method='FLANN', K=10, d='euclidean', windows='', pickle_folder='pickled_spectra'):
 		"""
@@ -222,6 +309,18 @@ class spectrum:
 			dist,ind=kdtree_index.index.query(f[mask]*window[mask],K,p=distance[d])
 
 			return names[ind], dist
+
+	def save_fits(self):
+		"""
+		save the spectrum into a 2D fits file
+		"""
+		pass
+
+	def save_ascii(self):
+		"""
+		save the spectrum into an ascii text file with three columns; wavelength, flux, error
+		"""
+		pass
 
 class pspectra:
 	spectra=0
@@ -290,6 +389,10 @@ class window_function:
 		window_function.window=[]
 		window_function.l=[]
 
+class functions:
+	def __init__(self):
+		deg=0
+		smooth=1000
 
 class flann_index:
 	flann=False
@@ -466,3 +569,27 @@ def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spe
 
 	return space
 
+def chebyshev(p,ye,mask):
+	print p[0][mask]
+	coef=np.polynomial.chebyshev.chebfit(p[0][mask], p[1][mask], functions.deg)
+	cont=np.polynomial.chebyshev.chebval(p[0],coef)
+	return cont
+
+def poly(p,ye,mask):
+	r=np.polyfit(p[0][mask], p[1][mask], deg=functions.deg)
+	f=np.poly1d(r)
+	return f(p[0])
+
+def spline(p,ye,mask):
+	spl = UnivariateSpline(p[0][mask], p[1][mask],k=functions.deg)
+	spl.set_smoothing_factor(5000000)
+	return spl(p[0])
+
+def gauss_kern(fwhm):
+	""" Returns a normalized 1D gauss kernel array for convolutions """
+	size=2*(fwhm/2.355)**2
+	size_grid = int(size) # we limit the size of kernel, so it is as small as possible (or minimal size) for faster calculations
+	if size_grid<7: size_grid=7
+	x= scipy.mgrid[-size_grid:size_grid+1]
+	g = scipy.exp(-(x**2/float(size)))
+	return g / np.sum(g)
