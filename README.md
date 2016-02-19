@@ -156,6 +156,11 @@ s.convolve(fwhm,extend=False)
 This makes a convolution between a spectrum and a gaussian kernel with a given FWHM. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
 
 ###Median filter
+```python
+s.median_filter(size,extend=False)
+```
+
+This does a median filter on the spectrum with a box of size `size`. The box size is given in Angstroms, but will be rounded to nearest odd integer when translated into size in pixels during the execution of this function. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
 
 ##Saving spectra
 
