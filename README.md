@@ -149,7 +149,19 @@ s.interpolate(space)
 ```
 Interpolate the spectrum into a given `space`. `space` can be any 1D list or array filled with numeric values. `s.l` will be changed into space and `s.f` will be linearly interpolated.
 
-##Other methods
+###Convolution with a gaussian kernel (resolution degradation)
+```python
+s.convolve(fwhm,extend=False)
+```
+This makes a convolution between a spectrum and a gaussian kernel with a given FWHM. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
+
+###Median filter
+
+##Saving spectra
+
+###Saving spectra into fits files
+
+###Saving spectra into ascii text files
 
 ##Finding nearest neighbors
 
