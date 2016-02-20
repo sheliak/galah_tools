@@ -310,17 +310,42 @@ class spectrum:
 
 			return names[ind], dist
 
-	def save_fits(self):
+	def save_fits(self, fname=None):
 		"""
 		save the spectrum into a 2D fits file
 		"""
-		pass
+		if fname==None:
+			fname=setup.folder+self.name+'.fits'
+		hdu = pyfits.PrimaryHDU(self.f)
+		hdu.writeto(fname)
+		hdulist = pyfits.open(fname,mode='update')
+		prihdr = hdulist[0].header
+		prihdr['COMMENT']='File written by galah_tools.py'
+		prihdr.set('CRVAL1', self.l[0])
+		prihdr.set('CDELT1', self.l[1]-self.l[0])
+		prihdr.set('CRPIX1', 1)
+		prihdr.set('CUNIT1', 'Angstroms')
+		hdulist.flush()
+		hdulist.close()
+		pyfits.append(fname,self.fe)
+		hdulist = pyfits.open(fname,mode='update')
+		prihdr = hdulist[1].header
+		prihdr['COMMENT']='File written by galah_tools.py'
+		prihdr.set('CRVAL1', self.l[0])
+		prihdr.set('CDELT1', self.l[1]-self.l[0])
+		prihdr.set('CRPIX1', 1)
+		prihdr.set('CUNIT1', 'Angstroms')
+		hdulist.flush()
+		hdulist.close()
 
-	def save_ascii(self):
+
+	def save_ascii(self, fname=None):
 		"""
 		save the spectrum into an ascii text file with three columns; wavelength, flux, error
 		"""
-		pass
+		if fname==None:
+			fname=setup.folder+self.name+'.txt'
+		np.savetxt(fname,zip(self.l,self.f,self.fe))
 
 class pspectra:
 	spectra=0
