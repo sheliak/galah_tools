@@ -222,6 +222,24 @@ class spectrum:
 
 		return kernel
 
+	def res_degradation(self,r,target_r):
+		"""
+		degradate resolution from resolving power r to resolving power target_r
+		"""
+
+		if r==target_r:
+			pass
+		elif target_r>r:
+			raise RuntimeError('Cannot increase the resolution.')
+		else:
+			l=np.average(self.l)
+			s=l/r
+			s_target=l/target_r
+
+			s_conv=np.sqrt(s_target**2-s**2)
+
+			self.convolve(s_conv,extend=True)
+
 	def median_filter(self,size, extend=False):
 		"""
 		do a standard median filtering. give size in Angstroms, will be translated to nearest odd number of pixels.
