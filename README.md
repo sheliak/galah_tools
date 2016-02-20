@@ -6,7 +6,7 @@ Galah tools package is a python module enabling an easy access to GALAH spectra 
 This software can be downloaded by cloning the git repository:
 
 ```bash
-git clone https://github.com/sheliak/galah_tools.git
+git clone --recursive https://github.com/sheliak/galah_tools.git
 ```
 
 A folder `galah_tools` will be created
