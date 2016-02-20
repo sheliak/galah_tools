@@ -165,8 +165,17 @@ This does a median filter on the spectrum with a box of size `size`. The box siz
 ##Saving spectra
 
 ###Saving spectra into fits files
+```python
+s.save_fits(fname=None)
+```
+
+This will save the spectrum into a fits file. If no fname is given, the spectrum will be saved into the folder given during the setup und the file name fill be the name of the spectrum with the .fits suffix. The primary extension will hold the spectrum and the secondary extension will hold the error spectrum. Wavelength calibration is written into the header.
 
 ###Saving spectra into ascii text files
+```python
+s.save_ascii(fname=None)
+```
+This will save the spectrum into a fits file. If no fname is given, the spectrum will be saved into the folder given during the setup und the file name fill be the name of the spectrum with the .txt suffix. The spectrum is saved into three columns, first one for the wavelenght, second for the flux and last for the error. Delimiters is whitespaces.
 
 ##Finding nearest neighbors
 
