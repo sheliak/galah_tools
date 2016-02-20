@@ -155,6 +155,13 @@ s.convolve(fwhm,extend=False)
 ```
 This makes a convolution between a spectrum and a gaussian kernel with a given FWHM. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
 
+###Resolution degradation
+```python
+s.res_degradation(r,target_r)
+```
+
+If you want to change the resolving power from `r` to `r_target` you can use this function. It will calculate the correct kernel size and call the convolution function. `r` must always be larger or equal than `target_r`. 
+
 ###Median filter
 ```python
 s.median_filter(size,extend=False)
