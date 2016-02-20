@@ -8,7 +8,7 @@ setup(name='galah_tools',
       author='Janez Kos',
       author_email='jkos@usyd.edu.au',
       url='https://www.galah-survey.org',
-      py_modules=['galah_tools'],
+      py_modules=['galah_tools', 'sclip.sclip'],
       install_requires=['pyfits', 'numpy', 'scipy', 'matplotlib'],
      )
 
