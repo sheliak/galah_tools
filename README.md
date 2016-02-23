@@ -227,7 +227,7 @@ names, distances=s.knn(K, windows, method, d, pickle_folder)
 Only the first argument is mandatory.
 * `K` is the number of neighbors you want (must be smaller or equal to number of spectra)
 * `windows` is a filename where windows and ranges are defined
-* `method={KDTRee}{FLANN}` tells which method to use
+* `method={KDTree}{FLANN}` tells which method to use
 * `d={manhattan}{euclidean}` tells what metric to use
 * `pickle_folder` is the name of the folder where pickled spectra are saved. Default is `./pickled_spectra`
 * `names` and `distances` are arrays with the nearest neighbors arranged by distance. First one gives names of the nearest spectra and the second one gives distances.
