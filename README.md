@@ -155,7 +155,7 @@ Interpolate the spectrum into a given `space`. `space` can be any 1D list or arr
 ```python
 s.convolve(fwhm,extend=False)
 ```
-This makes a convolution between a spectrum and a gaussian kernel with a given FWHM. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
+This makes a convolution between a spectrum and a gaussian kernel with a given FWHM (in Angstroms). If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
 
 to do: convolution with a kernel with a varying width
 
