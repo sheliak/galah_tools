@@ -129,6 +129,8 @@ sum(((y[i]-spline(x[i])))**2, axis=0) <= smooth
 
 The fitted function is returned sampled the same way as the spectrum.
 
+to do: normalization with predefined regions
+
 ###Radial velocity shift
 ```python
 s.shift(rv, linearize=True)
@@ -154,6 +156,8 @@ Interpolate the spectrum into a given `space`. `space` can be any 1D list or arr
 s.convolve(fwhm,extend=False)
 ```
 This makes a convolution between a spectrum and a gaussian kernel with a given FWHM. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
+
+to do: convolution with a kernel with a varying width
 
 ###Resolution degradation
 ```python
