@@ -157,14 +157,18 @@ s.convolve(fwhm,extend=False)
 ```
 This makes a convolution between a spectrum and a gaussian kernel with a given FWHM (in Angstroms). If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
 
-to do: convolution with a kernel with a varying width
-
 ###Resolution degradation
 ```python
 s.res_degradation(r,target_r)
 ```
 
 If you want to change the resolving power from `r` to `r_target` you can use this function. It will calculate the correct kernel size and call the convolution function. `r` must always be larger or equal than `target_r`. 
+
+###Resolution equalization
+This will remove the varying resolution. It degrades the spectrum to the resolving power of 22000 from whatever is measured as the resolving power in the resolution maps. Simply run:
+```python
+s.equalize_resolution()
+```
 
 ###Median filter
 ```python
