@@ -5,7 +5,6 @@ import csv
 import os
 import fnmatch
 import cPickle as pickle
-from pyflann import *
 from scipy import spatial
 import ftputil
 import getpass
@@ -14,6 +13,7 @@ from sclip.sclip import sclip
 from scipy.interpolate import UnivariateSpline
 import scipy
 from scipy import signal
+from pyflann import *
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
@@ -240,6 +240,82 @@ class spectrum:
 
 			self.convolve(s_conv,extend=True)
 
+	def equalize_resolution(self):
+		"""
+		convolves a spectrum with a kernel with a variable width. Works by warping the data, performing the convolution and unwarping the data, so it is vectorized (mostly) and fast
+		"""
+
+		#check if the correct resolution map is already in the memory:
+		if self.ccd==1:
+			if resolution_maps.map_ccd_1==False:
+				resolution_maps(self.ccd)
+				map_l,map_f=resolution_maps.map_ccd_1
+			else:
+				map_l,map_f=resolution_maps.map_ccd_1
+		if self.ccd==2:
+			if resolution_maps.map_ccd_2==False:
+				resolution_maps(self.ccd)
+				map_l,map_f=resolution_maps.map_ccd_2
+			else:
+				map_l,map_f=resolution_maps.map_ccd_2
+		if self.ccd==3:
+			if resolution_maps.map_ccd_3==False:
+				resolution_maps(self.ccd)
+				map_l,map_f=resolution_maps.map_ccd_3
+			else:
+				map_l,map_f=resolution_maps.map_ccd_3
+		if self.ccd==4:
+			if resolution_maps.map_ccd_4==False:
+				resolution_maps(self.ccd)
+				map_l,map_f=resolution_maps.map_ccd_4
+			else:
+				map_l,map_f=resolution_maps.map_ccd_4
+
+		#extract the correct pivot number from the map:
+		map_f=map_f[self.pivot-1]
+
+		#current sampling:
+		sampl=self.l[1]-self.l[0]
+
+		#target sigma coresponds to the R=22000. We want the constant sigma, not constant R, so take the sigma that corresponds to the average R=22000
+		s_target=np.ones(len(map_l))*np.average(map_l)/22000.
+
+		#the sigma of the kernel is:
+		s=np.sqrt(s_target**2-np.divide(map_l,map_f)**2)
+
+		#fit it with the polynomial, so we have a function instead of sampled values:
+		map_fit=np.poly1d(np.polyfit(map_l, s/sampl, deg=6))
+
+		#create an array with new sampling. The first point is the same as in the spectrum:
+		l_new=[map_l[0]]
+
+		#and the sigma in pixels with which to convolve is
+		sampl=self.l[1]-self.l[0]
+		s_new=s/sampl/min(s/sampl)
+
+		#now create the non linear sampling. It should be finer where sigma is larger and sparser where sigma is smaller
+		#IS THERE A WAY TO VECTORIZE THIS???
+		for i in range(int(len(self.l)*np.max(s_new)*min(s/sampl))):
+			l_new.append(l_new[i]+sampl/map_fit(l_new[i]))
+
+		#interpolate the spectrum to the new sampling:
+		new_f=np.interp(np.array(l_new),self.l,self.f)
+		new_fe=np.interp(np.array(l_new),self.l,self.fe)
+
+		#the kernel is min(s_orig/sampl) pixels large, so we oversample as little as possible (for the very best precision we should oversample more, but this takes time)
+		kernel=gauss_kern(min(s/sampl))
+
+		#convolve the warped spectrum:
+		con_f=signal.fftconvolve(new_f,kernel,mode='same')
+		con_fe=signal.fftconvolve(new_fe**2,kernel,mode='same')
+
+		#inverse the warping:
+		self.f=np.interp(self.l,np.array(l_new),con_f)
+		self.fe=np.interp(self.l,np.array(l_new),con_fe)
+		self.fe=np.sqrt(self.fe)
+
+		return self
+
 	def median_filter(self,size, extend=False):
 		"""
 		do a standard median filtering. give size in Angstroms, will be translated to nearest odd number of pixels.
@@ -458,6 +534,30 @@ class kdtree_index:
 
 	def clear(self):
 		kdtree_index.index=False
+
+class resolution_maps:
+	map_ccd_1=False
+	map_ccd_2=False
+	map_ccd_3=False
+	map_ccd_4=False
+
+	def __init__(self, ccd):
+		hdulist = pyfits.open('resolution_maps/ccd%s_piv.fits' % ccd)
+		res=hdulist[0].data
+		crval=hdulist[0].header['CRVAL1']
+		crdel=hdulist[0].header['CDELT1']
+		naxis=hdulist[0].header['NAXIS1']
+		l=np.linspace(crval, crval+crdel*naxis, naxis)
+		hdulist.close()
+
+		if ccd==1:
+			resolution_maps.map_ccd_1=(l,res)
+		if ccd==2:
+			resolution_maps.map_ccd_2=(l,res)
+		if ccd==3:
+			resolution_maps.map_ccd_3=(l,res)
+		if ccd==3:
+			resolution_maps.map_ccd_3=(l,res)
 
 
 class setup:
