@@ -155,7 +155,7 @@ Interpolate the spectrum into a given `space`. `space` can be any 1D list or arr
 ```python
 s.convolve(fwhm,extend=False)
 ```
-This makes a convolution between a spectrum and a gaussian kernel with a given FWHM (in Angstroms). If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
+This makes a convolution between a spectrum and a gaussian kernel with a given FWHM (in Angstroms). If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible.
 
 ###Resolution degradation
 ```python
@@ -175,7 +175,7 @@ s.equalize_resolution()
 s.median_filter(size,extend=False)
 ```
 
-This does a median filter on the spectrum with a box of size `size`. The box size is given in Angstroms, but will be rounded to nearest odd integer when translated into size in pixels during the execution of this function. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible. This method only works with linearly sampled spectra for now.
+This does a median filter on the spectrum with a box of size `size`. The box size is given in Angstroms, but will be rounded to nearest odd integer when translated into size in pixels during the execution of this function. If `extend` is set to True, the data is extended before the convolution with the first and last value, so the boundary effects are less visible.
 
 ##Saving spectra
 
