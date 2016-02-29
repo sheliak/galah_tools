@@ -120,7 +120,19 @@ class spectrum:
 			self.fe=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
 		else:
 			pass
-
+	
+	def linearize(self):
+		"""
+		take whatever the sampling is and linearize it
+		"""
+		pass
+	
+	def logarize(self):
+		"""
+		take whatever the sampling is and make a logaritmic sampling
+		"""
+		pass
+	
 	def shift(self, rv, linearize=True):
 		"""
 		shift the spectrum for radial velocity rv, given in km/s
