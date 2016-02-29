@@ -81,8 +81,8 @@ s=gtools.read('1402070012010053')
 Several arguments can be given to control the properties of a spectrum:
 * `kind={'norm{alized}'} {'flux{ed}'}} {'nosky'}` to retrieve the normalized or fluxed spectrum or the spectrum before the sky subtraction.
 * `extension={0}{2}{4}` to retrieve a spectrum from the specific fits extension. 0=fluxed, 2=spectrum before the sky subtraction and 4=normalized.
-* `linearize={True} {False}` If you want to force the spectrum to have a linearized sampling set to True. Otherwise you will get whatever is written in the fits file.
-* `log={True} {False}` If you want to use the log spacing in the wavelength set this to `True`. **Not yet implemented. Do not use.**
+* `linearize={True} {False}` If you want to force the spectrum to have a linearized sampling set to True. Otherwise you will get whatever is written in the fits file. Only `linearize` or `log` can be set to True at the same time.
+* `log={True} {False}` If you want to use the log spacing in the wavelength set this to `True`. Only `linearize` or `log` can be set to True at the same time.
 * `wavelength={'default'} {'observer'}, {'object'}, {'bary'}` This controls in what velocity space you want the spectrum. `'default'` gives whatever is in the fits file. `'observer'` returns a spectrum with the wavelengths as measured from the arc lamp, uncorrected for the barycentric velocity. `'object'` gives the wavelengths corrected for the barycentric velocity and the radial velocity of the star (as measured by GUESS). `'bary'` gives the wavelengths corrected for the barycentric velocity. **Please, use only `'object'` for now. Other options have not been tested yet or are in the development**
 
 When spectrum is downloaded from the GALAH ftp site it is saved in the `folder` or `root_folder`, whichever is defined.
