@@ -125,13 +125,15 @@ class spectrum:
 		"""
 		take whatever the sampling is and linearize it
 		"""
-		pass
+		self.f=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.f)
+		self.fe=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
 	
 	def logarize(self):
 		"""
 		take whatever the sampling is and make a logaritmic sampling
 		"""
-		pass
+		self.f=np.interp(np.logspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.f)
+		self.fe=np.interp(np.logspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
 	
 	def shift(self, rv, linearize=True):
 		"""
@@ -209,28 +211,30 @@ class spectrum:
 		if (self.l[1]-self.l[0])==(self.l[-1]-self.l[-2]):
 			linear=True
 		else:
+			l=self.l
+			self.linearize()
 			linear=False
 
-		if linear:
-			step=self.l[1]-self.l[0]
-			kernel=gauss_kern(fwhm/step)
-			add_dim=len(kernel)
+		step=self.l[1]-self.l[0]
+		kernel=gauss_kern(fwhm/step)
+		add_dim=len(kernel)
 
-			if extend==True:
-				f=np.insert(self.f,0,np.ones(add_dim)*self.f[0])
-				f=np.append(f,np.ones(add_dim)*self.f[-1])
-				fe=np.insert(self.fe,0,np.ones(add_dim)*self.fe[0])
-				fe=np.append(fe,np.ones(add_dim)*self.fe[-1])
-				self.f=signal.fftconvolve(f,kernel,mode='same')[add_dim:-add_dim]
-				self.fe=signal.fftconvolve(fe**2,kernel,mode='same')[add_dim:-add_dim]
-				self.fe=np.sqrt(self.fe)
+		if extend==True:
+			f=np.insert(self.f,0,np.ones(add_dim)*self.f[0])
+			f=np.append(f,np.ones(add_dim)*self.f[-1])
+			fe=np.insert(self.fe,0,np.ones(add_dim)*self.fe[0])
+			fe=np.append(fe,np.ones(add_dim)*self.fe[-1])
+			self.f=signal.fftconvolve(f,kernel,mode='same')[add_dim:-add_dim]
+			self.fe=signal.fftconvolve(fe**2,kernel,mode='same')[add_dim:-add_dim]
+			self.fe=np.sqrt(self.fe)
 
-			else:
-				self.f=signal.fftconvolve(self.f,kernel,mode='same')
-				self.fe=signal.fftconvolve(self.fe**2,kernel,mode='same')
-				self.fe=np.sqrt(self.fe)
 		else:
-			raise Warning('wavelength scale is not linear. Impossible to perform convolution')
+			self.f=signal.fftconvolve(self.f,kernel,mode='same')
+			self.fe=signal.fftconvolve(self.fe**2,kernel,mode='same')
+			self.fe=np.sqrt(self.fe)
+
+		if linear==False:
+			self.interpolate(l)
 
 		return kernel
 
@@ -283,6 +287,14 @@ class spectrum:
 			else:
 				map_l,map_f=resolution_maps.map_ccd_4
 
+		#check if wavelength calibration is linear:
+		if (self.l[1]-self.l[0])==(self.l[-1]-self.l[-2]):
+			linear=True
+		else:
+			l=self.l
+			self.linearize()
+			linear=False
+
 		#extract the correct pivot number from the map:
 		map_f=map_f[self.pivot-1]
 
@@ -326,6 +338,9 @@ class spectrum:
 		self.fe=np.interp(self.l,np.array(l_new),con_fe)
 		self.fe=np.sqrt(self.fe)
 
+		if linear==False:
+			self.interpolate(l)
+
 		return self
 
 	def median_filter(self,size, extend=False):
@@ -337,26 +352,28 @@ class spectrum:
 			linear=True
 		else:
 			linear=False
+			l=self.l
+			self.linearize()
 
-		if linear:
-			step=self.l[1]-self.l[0]
-			add_dim=int(np.ceil(size/step // 2 * 2 + 1))
+		step=self.l[1]-self.l[0]
+		add_dim=int(np.ceil(size/step // 2 * 2 + 1))
 
-			if extend==True:
-				f=np.insert(self.f,0,np.ones(add_dim)*self.f[0])
-				f=np.append(f,np.ones(add_dim)*self.f[-1])
-				fe=np.insert(self.fe,0,np.ones(add_dim)*self.fe[0])
-				fe=np.append(fe,np.ones(add_dim)*self.fe[-1])
-				self.f=signal.medfilt(f,add_dim)[add_dim:-add_dim]
-				self.fe=signal.medfilt(fe,add_dim,)[add_dim:-add_dim]
-				self.fe=self.fe/np.sqrt(add_dim)
+		if extend==True:
+			f=np.insert(self.f,0,np.ones(add_dim)*self.f[0])
+			f=np.append(f,np.ones(add_dim)*self.f[-1])
+			fe=np.insert(self.fe,0,np.ones(add_dim)*self.fe[0])
+			fe=np.append(fe,np.ones(add_dim)*self.fe[-1])
+			self.f=signal.medfilt(f,add_dim)[add_dim:-add_dim]
+			self.fe=signal.medfilt(fe,add_dim,)[add_dim:-add_dim]
+			self.fe=self.fe/np.sqrt(add_dim)
 
-			else:
-				self.f=signal.medfilt(self.f,add_dim)
-				self.fe=signal.medfilt(self.fe,add_dim)
-				self.fe=self.fe/np.sqrt(add_dim)
 		else:
-			raise Warning('wavelength scale is not linear. Impossible to perform median filtering')
+			self.f=signal.medfilt(self.f,add_dim)
+			self.fe=signal.medfilt(self.fe,add_dim)
+			self.fe=self.fe/np.sqrt(add_dim)
+		
+		if linear==False:
+			self.interpolate(l)
 
 
 	def knn(self,method='FLANN', K=10, d='euclidean', windows='', pickle_folder='pickled_spectra'):
