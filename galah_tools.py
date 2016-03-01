@@ -64,19 +64,6 @@ class spectrum:
 						print ' + Spectrum %s failed to download.' % self.name
 			else:
 				print ' - Spectrum %s not found. Enable download to get it from the ftp site.' % self.name
-		
-		#set velocity frame
-		con=setup.con
-		if con!='':
-			cur=con.cursor()
-			cur.execute("select v from iraf_dr50 where name=%s" % self.name)
-			try:
-				self.v=float(cur.fetchone()[0])
-			except TypeError:
-				print ' ! Warning: no velocity in the database. Assuming v=0.'
-				self.v=0.0
-		else:
-			self.v=float(setup.db_dict[self.name]['v'])
 
 		#set l, f, and fe
 		instance={'norm':4, 'normalized':4, 'flux':0, 'fluxed':0}
@@ -103,6 +90,21 @@ class spectrum:
 			
 		except:
 			raise RuntimeError('Cannot read spectrum. Fits extension might be missing.')
+		
+		#set radial velocity if it will be needed in the future:
+		#if is here because reading a spectrum is faster if read in its original velocity frame
+		if (wavelength=='observer' and instance[kind]==4) or (wavelength=='object' and instance[kind]<4):
+			con=setup.con
+			if con!='':
+				cur=con.cursor()
+				cur.execute("select v from iraf_dr50 where name=%s" % self.name)
+				try:
+					self.v=float(cur.fetchone()[0])
+				except TypeError:
+					print ' ! Warning: no velocity in the database. Assuming v=0.'
+					self.v=0.0
+			else:
+				self.v=float(setup.db_dict[self.name]['v'])
 		
 		#shift into correct velocity frame
 		if wavelength=='default':
