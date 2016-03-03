@@ -744,7 +744,6 @@ def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spe
 	return space
 
 def chebyshev(p,ye,mask):
-	print p[0][mask]
 	coef=np.polynomial.chebyshev.chebfit(p[0][mask], p[1][mask], functions.deg)
 	cont=np.polynomial.chebyshev.chebval(p[0],coef)
 	return cont
