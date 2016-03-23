@@ -551,7 +551,7 @@ class flann_index:
 	def __init__(self, spectra, d):
 		set_distance_type(d)
 		flann_index.flann=FLANN()
-		flann_index.index=flann_index.flann.build_index(spectra, algorithm='autotuned', target_precision=0.7)
+		flann_index.index=flann_index.flann.build_index(spectra, algorithm='autotuned', target_precision=0.9)
 
 	def clear(self):
 		flann_index.flann=False
