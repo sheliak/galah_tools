@@ -54,9 +54,9 @@ class spectrum:
 					try:
 						with ftputil.FTPHost('site-ftp.aao.gov.au', 'galah', getpass.getpass()) as host:
 							if self.combine_method>=1:
-								host.download('reductions/Iraf_5.0/%s/combined/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
+								host.download('reductions/Iraf_5.1/%s/combined/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
 							else:
-								host.download('reductions/Iraf_5.0/%s/individual/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
+								host.download('reductions/Iraf_5.1/%s/individual/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
 							path=setup.folder+self.name+'.fits'
 							hdulist = pyfits.open(path)
 						print ' + Spectrum %s succesfully downloaded.' % self.name
@@ -67,6 +67,21 @@ class spectrum:
 
 		#set l, f, and fe
 		instance={'norm':4, 'normalized':4, 'flux':0, 'fluxed':0}
+
+		#set radial velocity if it will be needed in the future:
+		#if is here because reading a spectrum is faster if read in its original velocity frame
+		if (wavelength=='observer' and instance[kind]==4) or (wavelength=='object' and instance[kind]<4) or instance[kind]==4:
+			con=setup.con
+			if con!='':
+				cur=con.cursor()
+				cur.execute("select v from iraf_dr51 where name=%s" % self.name)
+				try:
+					self.v=float(cur.fetchone()[0])
+				except TypeError:
+					print ' ! Warning: no velocity in the database. Assuming v=0.'
+					self.v=0.0
+			else:
+				self.v=float(setup.db_dict[self.name]['v'])
 
 		try:
 			self.f=hdulist[instance[kind]].data
@@ -90,21 +105,6 @@ class spectrum:
 			
 		except:
 			raise RuntimeError('Cannot read spectrum. Fits extension might be missing.')
-		
-		#set radial velocity if it will be needed in the future:
-		#if is here because reading a spectrum is faster if read in its original velocity frame
-		if (wavelength=='observer' and instance[kind]==4) or (wavelength=='object' and instance[kind]<4):
-			con=setup.con
-			if con!='':
-				cur=con.cursor()
-				cur.execute("select v from iraf_dr50 where name=%s" % self.name)
-				try:
-					self.v=float(cur.fetchone()[0])
-				except TypeError:
-					print ' ! Warning: no velocity in the database. Assuming v=0.'
-					self.v=0.0
-			else:
-				self.v=float(setup.db_dict[self.name]['v'])
 		
 		#shift into correct velocity frame
 		if wavelength=='default':
