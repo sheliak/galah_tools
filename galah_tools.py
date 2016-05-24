@@ -54,9 +54,9 @@ class spectrum:
 					try:
 						with ftputil.FTPHost('site-ftp.aao.gov.au', 'galah', getpass.getpass()) as host:
 							if self.combine_method>=1:
-								host.download('reductions/Iraf_5.1/%s/combined/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
+								host.download('reductions/Iraf_5.0/%s/combined/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
 							else:
-								host.download('reductions/Iraf_5.1/%s/individual/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
+								host.download('reductions/Iraf_5.0/%s/individual/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
 							path=setup.folder+self.name+'.fits'
 							hdulist = pyfits.open(path)
 						print ' + Spectrum %s succesfully downloaded.' % self.name
