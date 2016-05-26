@@ -143,7 +143,7 @@ s.add_noise(snr, target_snr, skip=True)
 ```
 Change the SNR of the spectrum from `snr` to `target_snr`. If `target_snr>=snr`, `skip` is checked. If True, nothing will happen and the SNR will remain as is. If set to False an error will pop up.
 
-**To do: read the original snr from the database or from the error spectrum. Give option to decide which snr to use.**
+**To do: read the original snr from the database or from the error spectrum. Give option to decide which snr to use. Fix a bug with continuum to 2!**
 
 ###Interpolate
 ```python
