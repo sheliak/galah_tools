@@ -142,7 +142,7 @@ class spectrum:
 		shift the spectrum for radial velocity rv, given in km/s
 		if linearize=True, the returned wavelength array will be linearized and flux interpolated
 		"""
-		l=self.l*(1-self.v/299792.458)
+		l=self.l*(1+rv/299792.458)
 		if linearize==True:
 			self.f=np.interp(np.linspace(l[0],l[-1],num=len(l)),l,self.f)
 			self.fe=np.interp(np.linspace(l[0],l[-1],num=len(l)),l,self.fe)
