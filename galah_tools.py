@@ -168,7 +168,9 @@ class spectrum:
 			noise=np.random.poisson((1.0/sigma)**2, size=len(self.f))
 			noise=noise/((1.0/sigma)**2)
 			self.f+=noise
+			self.f=self.f-1.0
 			self.fe+=1.0/noise
+			self.fe=self.fe-1.0
 
 			return self
 
