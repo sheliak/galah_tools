@@ -13,7 +13,7 @@ from sclip.sclip import sclip
 from scipy.interpolate import UnivariateSpline
 import scipy
 from scipy import signal
-from pyflann import *
+#from pyflann import *
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
@@ -415,6 +415,7 @@ class spectrum:
 
 
 		if method=='FLANN':
+			from pyflann import *
 			distance={'manhattan': 'manhattan', 'euclidean': 'euclidean'}
 
 			if flann_index.flann==False: 
