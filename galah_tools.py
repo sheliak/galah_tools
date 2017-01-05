@@ -81,7 +81,11 @@ class spectrum:
 					print ' ! Warning: no velocity in the database. Assuming v=0.'
 					self.v=0.0
 			else:
-				self.v=float(setup.db_dict[self.name]['v'])
+				try:
+					self.v=float(setup.db_dict[self.name]['v'])
+				except:
+					print ' ! Warning: no velocity in the database. Assuming v=0.'
+					self.v=0.0	
 
 		try:
 			self.f=hdulist[instance[kind]].data
