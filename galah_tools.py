@@ -36,7 +36,12 @@ class spectrum:
 		self.fe=-1
 
 		if setup.folder_is_root:
-			path=setup.folder+str(self.date)+'/combined/'+self.name+'.fits'
+			if name[10:12]=='01':
+				path=setup.folder+str(self.date)+'/standard/com/'+self.name+'.fits'
+			elif name[10:12]=='02':
+				path=setup.folder+str(self.date)+'/standard/com2/'+self.name+'.fits'
+			else:
+				path=None
 		else:
 			path=setup.folder+self.name+'.fits'
 		
@@ -66,7 +71,7 @@ class spectrum:
 				print ' - Spectrum %s not found. Enable download to get it from the ftp site.' % self.name
 
 		#set l, f, and fe
-		instance={'norm':4, 'normalized':4, 'flux':0, 'fluxed':0}
+		instance={'norm':4, 'normalized':4, 'normalised':4, 'flux':0, 'fluxed':0}
 
 		#set radial velocity if it will be needed in the future:
 		#if is here because reading a spectrum is faster if read in its original velocity frame
@@ -74,7 +79,7 @@ class spectrum:
 			con=setup.con
 			if con!='':
 				cur=con.cursor()
-				cur.execute("select v from iraf_dr51 where name=%s" % self.name)
+				cur.execute("select rv_guess from sobject_iraf_53 where sobject_id=%s" % self.name[:-1])
 				try:
 					self.v=float(cur.fetchone()[0])
 				except TypeError:
@@ -82,7 +87,7 @@ class spectrum:
 					self.v=0.0
 			else:
 				try:
-					self.v=float(setup.db_dict[self.name]['v'])
+					self.v=float(setup.db_dict[self.name[:-1]]['rv_guess'])
 				except:
 					print ' ! Warning: no velocity in the database. Assuming v=0.'
 					self.v=0.0	
@@ -133,13 +138,15 @@ class spectrum:
 		"""
 		self.f=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.f)
 		self.fe=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
+		self.l=np.linspace(self.l[0],self.l[-1],num=len(self.l))
 	
 	def logarize(self):
 		"""
 		take whatever the sampling is and make a logaritmic sampling
 		"""
-		self.f=np.interp(np.logspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.f)
-		self.fe=np.interp(np.logspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
+		self.f=np.interp(np.logspace(np.log10(self.l[0]),np.log10(self.l[-1]),num=int(len(self.l)*1.15)),self.l,self.f)
+		self.fe=np.interp(np.logspace(np.log10(self.l[0]),np.log10(self.l[-1]),num=int(len(self.l)*1.15)),self.l,self.fe)
+		self.l=np.logspace(np.log10(self.l[0]),np.log10(self.l[-1]),num=int(len(self.l)*1.15))
 	
 	def shift(self, rv, linearize=True):
 		"""
@@ -419,7 +426,7 @@ class spectrum:
 
 
 		if method=='FLANN':
-			from pyflann import *
+			from pyflann import flann_index
 			distance={'manhattan': 'manhattan', 'euclidean': 'euclidean'}
 
 			if flann_index.flann==False: 
@@ -628,7 +635,7 @@ class setup:
 				setup.csv=kwargs['csv']
 				reader = csv.DictReader(open(setup.csv))
 				for row in reader:
-					key = row.pop('name')
+					key = row.pop('sobject_id')
 					if key in setup.db_dict:
 						pass
 					setup.db_dict[key] = row
@@ -685,7 +692,7 @@ def read(name, **kwargs):
 	return spec
 
 
-def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spectra'):
+def spectra2pickle(spectra=[], ccd=1, space=[], limit=999999999999, pickle_folder='pickled_spectra'):
 	"""
 	Translate all spectra into blocks of pickle objects. Blocks are used, because only 10000 spectra can be in one object. 
 	After the pickle blocks are read they can be combined into a single table again.
@@ -716,10 +723,10 @@ def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spe
 		os.makedirs('pickled_spectra')
 
 	#create a list of spectra:
-	spectra=[]
-	for path, dirs, files in os.walk(os.path.abspath(setup.folder)):
-		for filename in fnmatch.filter(files, '*%s.fits' % (ccd)):
-			spectra.append(filename[:-5])
+	if spectra==[]:
+		for path, dirs, files in os.walk(os.path.abspath(setup.folder)):
+			for filename in fnmatch.filter(files, '*%s.fits' % (ccd)):
+				spectra.append(filename[:-5])
 	
 	#read and interpolate spectra one by one:
 	block=[]
@@ -749,6 +756,33 @@ def spectra2pickle(ccd, space=[], limit=999999999999, pickle_folder='pickled_spe
 	pickle.dump(space,open('%s/space.pickle' % (pickle_folder), 'wb'))
 
 	return space
+
+def cc(i1,i2):
+	"""
+	Cross correlate spectra in array s1 with spectrum s2.
+	Returns the shift between spectra (an array if s1 is an array) in km/s
+	"""
+	s1=copy.deepcopy(i1)
+	s2=copy.deepcopy(i2)
+	s2.logarize()
+	if isinstance(s1, spectrum): s1=[s1]
+	ccs=[]
+	for s in s1:
+		s.interpolate(s2.l)
+		ccf=np.correlate(s.f[10:-10]-np.average(s.f[10:-10]),s2.f[10:-10]-np.average(s2.f[10:-10]),mode='same')
+		max_index=np.argmax(ccf)
+		max_fit=np.polyfit(range(max_index-3,max_index+4),ccf[max_index-3:max_index+4],2)
+		max_fit= -max_fit[1]/(max_fit[0]*2.0)
+		diff=max_fit-len(ccf)/2.0
+		dl=s.l[1]-s.l[0]
+		ccs.append(dl*diff/s.l[0]*299792.458)
+	
+	if len(ccs)==1:
+		return ccs[0]
+	else:	
+		return np.array(ccs)
+		
+		
 
 def chebyshev(p,ye,mask):
 	coef=np.polynomial.chebyshev.chebfit(p[0][mask], p[1][mask], functions.deg)
