@@ -1,22 +1,27 @@
-import pyfits
+import logging
 import numpy as np
-import psycopg2 as mdb
-import csv
-import os
-import fnmatch
-import cPickle as pickle
-from scipy import spatial
-import ftputil
+from astropy.io import fits
+import owncloud
 import getpass
-import copy
-from sclip.sclip import sclip
-from scipy.interpolate import UnivariateSpline
+#import psycopg2 as mdb
+#import csv
+#import os
+#import fnmatch
+#import cPickle as pickle
+#from scipy import spatial
+#import ftputil
+#import getpass
+#import copy
+#from sclip.sclip import sclip
+#from scipy.interpolate import UnivariateSpline
 import scipy
 from scipy import signal
 #from pyflann import *
+from matplotlib import *
+from pylab import *
 
 class spectrum:
-	def __init__(self, name, kind='norm', extension=4, wavelength='default', linearize=True):
+	def __init__(self, name, kind='norm', extension=1, wavelength='default', linearize=True):
 		
 		#set atributes
 		if isinstance(name, basestring):
@@ -36,99 +41,78 @@ class spectrum:
 		self.fe=-1
 
 		if setup.folder_is_root:
-			if name[10:12]=='01':
-				path=setup.folder+str(self.date)+'/standard/com/'+self.name+'.fits'
+			if name[10:12]=='00':
+				#reading uncombined spectra
+				path=setup.folder+str(self.date)+'/spectra/all/'+self.name+'.fits'
+			elif name[10:12]=='01':
+				#readingh combined spectra
+				path=setup.folder+str(self.date)+'/spectra/com/'+self.name+'.fits'
 			elif name[10:12]=='02':
-				path=setup.folder+str(self.date)+'/standard/com2/'+self.name+'.fits'
+				#reading spectra combined over several epochs
+				path=setup.folder+str(self.date)+'/spectra/com2/'+self.name+'.fits'
 			else:
 				path=None
 		else:
+			#reding spectra from an exact folder
 			path=setup.folder+self.name+'.fits'
 		
 		try:#read if it exists
-			hdulist = pyfits.open(path)
+			hdulist = fits.open(path)
 		except:#otherwise download
-			if setup.download:
-				print ' - Spectrum %s not found. Serching in downloaded spectra.' % self.name
-				try:
-					path=setup.folder+self.name+'.fits'
-					hdulist = pyfits.open(path)
-					print ' + Spectrum %s already downloaded.' % self.name
-				except:
-					print ' - Spectrum %s not found. Downloading from the ftp.' % self.name
-					try:
-						with ftputil.FTPHost('site-ftp.aao.gov.au', 'galah', getpass.getpass()) as host:
-							if self.combine_method>=1:
-								host.download('reductions/Iraf_5.0/%s/combined/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
-							else:
-								host.download('reductions/Iraf_5.0/%s/individual/%s.fits' % (self.date, self.name), setup.folder+self.name+'.fits')
-							path=setup.folder+self.name+'.fits'
-							hdulist = pyfits.open(path)
-						print ' + Spectrum %s succesfully downloaded.' % self.name
-					except:
-						print ' + Spectrum %s failed to download.' % self.name
-			else:
-				print ' - Spectrum %s not found. Enable download to get it from the ftp site.' % self.name
+			logging.error('Spectrum %s not found. Enable download to get it from the ftp site.' % self.name)
+			raise
 
 		#set l, f, and fe
-		instance={'norm':4, 'normalized':4, 'normalised':4, 'flux':0, 'fluxed':0}
+		# dict converting extension names to extension numbers
+		instance={'norm':1, 'normalized':1, 'normalised':1, 'flux':0, 'fluxed':0}
 
-		#set radial velocity if it will be needed in the future:
-		#if is here because reading a spectrum is faster if read in its original velocity frame
-		if (wavelength=='observer' and instance[kind]==4) or (wavelength=='object' and instance[kind]<4) or instance[kind]==4:
-			con=setup.con
-			if con!='':
-				cur=con.cursor()
-				cur.execute("select rv_guess from sobject_iraf_53 where sobject_id=%s" % self.name[:-1])
-				try:
-					self.v=float(cur.fetchone()[0])
-				except TypeError:
-					print ' ! Warning: no velocity in the database. Assuming v=0.'
-					self.v=0.0
-			else:
-				try:
-					self.v=float(setup.db_dict[self.name[:-1]]['rv_guess'])
-				except:
-					print ' ! Warning: no velocity in the database. Assuming v=0.'
-					self.v=0.0	
+		self.f=hdulist[instance[kind]].data
+		self.fe=hdulist[2].data
+		self.map_f=hdulist[7].data
+		crval=hdulist[instance[kind]].header['CRVAL1']
+		crdel=hdulist[instance[kind]].header['CDELT1']
+		self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
+		self.map_l=np.linspace(crval, crval+crdel*len(self.map_f), len(self.map_f))
 
-		try:
-			self.f=hdulist[instance[kind]].data
-			if instance[kind]==4:
-				self.fe=hdulist[1].data
-			else:
-				self.fe=hdulist[instance[kind]+1].data
-			crval=hdulist[instance[kind]].header['CRVAL1']
-			crdel=hdulist[instance[kind]].header['CDELT1']
-			self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
-			
-			if instance[kind]==4:
-				#because normalized spec doesn't has its error, we use the fluxed error, but have to shift and interpolate it to normalized l:
-				crval=hdulist[1].header['CRVAL1']
-				crdel=hdulist[1].header['CDELT1']
-				naxis=hdulist[1].header['NAXIS1']
-				error_l=np.linspace(crval, crval+crdel*naxis, naxis)
-				error_l=error_l*(1-self.v/299792.458)
-				self.fe=np.interp(self.l,error_l,self.fe)
+		#set radial velocity. This is needed if spectra is required in some other velocity frame than default
+		rv=hdulist[0].header['RV']
+		if rv=='None':
+			self.rv=None
+		else:
+			self.rv=rv
 
-			
-		except:
-			raise RuntimeError('Cannot read spectrum. Fits extension might be missing.')
+		#set v_bary. This is needed if spectra is required in some other velocity frame than default
+		bary=hdulist[0].header['BARYEFF']
+		if bary=='None':
+			self.vb=None
+		else:
+			self.vb=bary
 		
 		#shift into correct velocity frame
 		if wavelength=='default':
+			#default velocity frame is as is
 			pass
-		elif wavelength=='observer' and instance[kind]==4:
-			self.l=self.l*(1+self.v/299792.458)
-		elif wavelength=='object' and instance[kind]<4:
-			self.l=self.l*(1-self.v/299792.458)
+		if wavelength=='bary':
+			#barycentric velocity frame is default
+			pass
+		elif wavelength=='observer':
+			#observer velocity frame must be corrected back for v_bary
+			if self.vb==None:
+				logging.warning('Spectrum %s has no barycentric velocity in the header. Assumibg v_bary=0 km/s' % self.name)
+			else:
+				self.l=self.l*(1+self.vb/299792.458)
+		elif wavelength=='object':
+			#object velocity frame must be corrected for radial velocity
+			if self.rv==None:
+				logging.warning('Spectrum %s has no radial velocity in the header. Assumibg v_r=0 km/s' % self.name)
+			else:
+				self.l=self.l*(1-self.rv/299792.458)
 		else:
 			pass
 
 		#linearize
 		if linearize==True:
-			self.f=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.f)
-			self.fe=np.interp(np.linspace(self.l[0],self.l[-1],num=len(self.l)),self.l,self.fe)
+			self.linearize()
 		else:
 			pass
 	
@@ -276,32 +260,6 @@ class spectrum:
 		convolves a spectrum with a kernel with a variable width. Works by warping the data, performing the convolution and unwarping the data, so it is vectorized (mostly) and fast
 		"""
 
-		#check if the correct resolution map is already in the memory:
-		if self.ccd==1:
-			if resolution_maps.map_ccd_1==False:
-				resolution_maps(self.ccd)
-				map_l,map_f=resolution_maps.map_ccd_1
-			else:
-				map_l,map_f=resolution_maps.map_ccd_1
-		if self.ccd==2:
-			if resolution_maps.map_ccd_2==False:
-				resolution_maps(self.ccd)
-				map_l,map_f=resolution_maps.map_ccd_2
-			else:
-				map_l,map_f=resolution_maps.map_ccd_2
-		if self.ccd==3:
-			if resolution_maps.map_ccd_3==False:
-				resolution_maps(self.ccd)
-				map_l,map_f=resolution_maps.map_ccd_3
-			else:
-				map_l,map_f=resolution_maps.map_ccd_3
-		if self.ccd==4:
-			if resolution_maps.map_ccd_4==False:
-				resolution_maps(self.ccd)
-				map_l,map_f=resolution_maps.map_ccd_4
-			else:
-				map_l,map_f=resolution_maps.map_ccd_4
-
 		#check if wavelength calibration is linear:
 		if (self.l[1]-self.l[0])==(self.l[-1]-self.l[-2]):
 			linear=True
@@ -310,23 +268,20 @@ class spectrum:
 			self.linearize()
 			linear=False
 
-		#extract the correct pivot number from the map:
-		map_f=map_f[self.pivot-1]
-
 		#current sampling:
 		sampl=self.l[1]-self.l[0]
 
 		#target sigma coresponds to the R=22000. We want the constant sigma, not constant R, so take the sigma that corresponds to the average R=22000
-		s_target=np.ones(len(map_l))*np.average(map_l)/22000.
+		s_target=np.ones(len(self.map_l))*np.average(self.map_l)/15000.
 
 		#the sigma of the kernel is:
-		s=np.sqrt(s_target**2-np.divide(map_l,map_f)**2)
+		s=np.sqrt(s_target**2-self.map_f**2)
 
 		#fit it with the polynomial, so we have a function instead of sampled values:
-		map_fit=np.poly1d(np.polyfit(map_l, s/sampl, deg=6))
+		map_fit=np.poly1d(np.polyfit(self.map_l, s/sampl, deg=6))
 
 		#create an array with new sampling. The first point is the same as in the spectrum:
-		l_new=[map_l[0]]
+		l_new=[self.map_l[0]]
 
 		#and the sigma in pixels with which to convolve is
 		sampl=self.l[1]-self.l[0]
@@ -340,6 +295,9 @@ class spectrum:
 		#interpolate the spectrum to the new sampling:
 		new_f=np.interp(np.array(l_new),self.l,self.f)
 		new_fe=np.interp(np.array(l_new),self.l,self.fe)
+
+		plot(l_new, l_new-np.roll(l_new, 1), 'r,')
+		show()
 
 		#the kernel is min(s_orig/sampl) pixels large, so we oversample as little as possible (for the very best precision we should oversample more, but this takes time)
 		kernel=gauss_kern(min(s/sampl))
@@ -390,65 +348,6 @@ class spectrum:
 		if linear==False:
 			self.interpolate(l)
 
-
-	def knn(self,method='FLANN', K=10, d='euclidean', windows='', pickle_folder='pickled_spectra'):
-		"""
-		find nearest neighbours. spectra2pickle must be run first
-		windows is a filename with the description of windows to use or a 1D np.ndarray
-		"""
-
-		if pspectra.names==0:
-			pspectra(pickle_folder)
-
-		spectra=pspectra.spectra
-		names=pspectra.names
-		l=pspectra.space
-
-		f=np.interp(l,self.l,self.f)
-
-		#check if window function already exists:
-		if type(windows).__name__=='ndarray':#if given as an array only check if format is right
-			if type(window).__name__!='ndarray': 
-				raise RuntimeError('windows is not type numpy.ndarray')
-			if len(window)!=len(l):
-				raise RuntimeError('windows has wrong size')
-			window=windows
-			window_function.window=windows
-			window_function.l=l
-		elif len(window_function.window)==0:#if it doesnt exist create it
-			window_function(l, windows)
-			window=window_function.window
-		else:#if it exists just use it
-			window=window_function.window
-
-		#create a mask where window==0, because there we don't have to comapre the vectors, because the difference is always 0:
-		mask=np.array(window,dtype=bool)
-
-
-		if method=='FLANN':
-			from pyflann import flann_index
-			distance={'manhattan': 'manhattan', 'euclidean': 'euclidean'}
-
-			if flann_index.flann==False: 
-				flann_index(spectra[:,mask]*window[mask], distance[d])
-			
-			ind,dist=flann_index.flann.nn_index(f[mask]*window[mask],K,checks=flann_index.index['checks'])
-
-			if distance[d]=='euclidean':
-				return names[ind], np.sqrt(dist)
-			else:
-				return names[ind], dist
-
-		if method=='KDTree':
-			distance={'manhattan': 1, 'euclidean': 2}
-
-			if kdtree_index.index==False:
-				kdtree_index(spectra[:,mask]*window[mask])
-
-			dist,ind=kdtree_index.index.query(f[mask]*window[mask],K,p=distance[d])
-
-			return names[ind], dist
-
 	def save_fits(self, fname=None):
 		"""
 		save the spectrum into a 2D fits file
@@ -486,43 +385,6 @@ class spectrum:
 			fname=setup.folder+self.name+'.txt'
 		np.savetxt(fname,zip(self.l,self.f,self.fe))
 
-class pspectra:
-	spectra=0
-	names=0
-	space=[]
-
-	def __init__(self,pickle_folder):
-		if pickle_folder[-1]=='/': pickle_folder=pickle_folder[:-1]
-
-		try:
-			pspectra.space=pickle.load(open('%s/space.pickle' % (pickle_folder), 'rb'))
-			#f=np.interp(space,self.l,self.f)
-			#l=space
-		except:
-			raise RuntimeError('Pickle spectra first if you want to use nearest neighbour search. No wavelength samling is saved.')
-
-		blocks=[]
-		for path, dirs, files in os.walk(os.path.abspath(pickle_folder)):
-			for filename in fnmatch.filter(files, 'b*.pickle'):
-				blocks.append(filename)
-
-		if len(blocks)==0:
-			raise RuntimeError('Pickle spectra first if you want to use nearest neighbour search. No pickled spectra saved.')
-
-		spectra_frompickle=[]
-		for i in blocks:
-			spectra_frompickle=spectra_frompickle+pickle.load(open('%s/%s' % (pickle_folder,i), 'rb'))
-
-		names=[]
-		spectra=[]
-
-		for i in spectra_frompickle:
-			names.append(i[0])
-			spectra.append(i[1])
-
-		pspectra.spectra=np.array(spectra)
-		pspectra.names=np.array(names)
-
 class window_function:
 	window=[]
 	l=[]
@@ -558,59 +420,9 @@ class functions:
 		deg=0
 		smooth=1000
 
-class flann_index:
-	flann=False
-	index=0
-
-	def __init__(self, spectra, d):
-		set_distance_type(d)
-		flann_index.flann=FLANN()
-		flann_index.index=flann_index.flann.build_index(spectra, algorithm='autotuned', target_precision=0.9)
-
-	def clear(self):
-		flann_index.flann=False
-		flann_index.index=0
-
-class kdtree_index:
-	index=False
-
-	def __init__(self, spectra):
-		kdtree_index.index=spatial.cKDTree(spectra)
-
-	def clear(self):
-		kdtree_index.index=False
-
-class resolution_maps:
-	map_ccd_1=False
-	map_ccd_2=False
-	map_ccd_3=False
-	map_ccd_4=False
-
-	def __init__(self, ccd):
-		hdulist = pyfits.open('resolution_maps/ccd%s_piv.fits' % ccd)
-		res=hdulist[0].data
-		crval=hdulist[0].header['CRVAL1']
-		crdel=hdulist[0].header['CDELT1']
-		naxis=hdulist[0].header['NAXIS1']
-		l=np.linspace(crval, crval+crdel*naxis, naxis)
-		hdulist.close()
-
-		if ccd==1:
-			resolution_maps.map_ccd_1=(l,res)
-		if ccd==2:
-			resolution_maps.map_ccd_2=(l,res)
-		if ccd==3:
-			resolution_maps.map_ccd_3=(l,res)
-		if ccd==3:
-			resolution_maps.map_ccd_3=(l,res)
-
-
 class setup:
 	folder=''
 	folder_is_root=False
-	con=''
-	csv=''
-	db_dict={}
 	download=False
 
 	def __init__(self, **kwargs):
@@ -625,20 +437,9 @@ class setup:
 				if setup.folder[-1]!='/':
 					setup.folder=setup.folder+'/'
 
-			if key=='con':
-				setup.con=kwargs['con']
-
 			if key=='download':
 				setup.download=kwargs['download']
 
-			if key=='csv':
-				setup.csv=kwargs['csv']
-				reader = csv.DictReader(open(setup.csv))
-				for row in reader:
-					key = row.pop('sobject_id')
-					if key in setup.db_dict:
-						pass
-					setup.db_dict[key] = row
 
 def read_windows(filename,l):
 	windows=[]
@@ -690,72 +491,6 @@ def read(name, **kwargs):
 	"""
 	spec=spectrum(name, **kwargs)
 	return spec
-
-
-def spectra2pickle(spectra=[], ccd=1, space=[], limit=999999999999, pickle_folder='pickled_spectra'):
-	"""
-	Translate all spectra into blocks of pickle objects. Blocks are used, because only 10000 spectra can be in one object. 
-	After the pickle blocks are read they can be combined into a single table again.
-	This is used by nearest neighbour search, because spectra must be read fast.
-	"""
-
-	if pickle_folder[-1]=='/': pickle_folder=pickle_folder[:-1]
-
-	#using pickle to store data can be dangerous. Display warning
-	print ' ! Warning: using pickle to store data can be dangerous. Use at your own risk!'
-
-	#check if defined space is valid for the given ccd:
-	if ccd==1:
-		if space==[]: space=np.linspace(4713,4903,4100)
-		if not any(4713<i<4903 for i in space): raise RuntimeError('Space is out of boundary for ccd 1')
-	if ccd==2:
-		if space==[]: space=np.linspace(5600,5875,4100)
-		if not any(5600<i<5875 for i in space): raise RuntimeError('Space is out of boundary for ccd 2')
-	if ccd==3:
-		if space==[]: space=np.linspace(6477,6740,4100)
-		if not any(6477<i<6740 for i in space): raise RuntimeError('Space is out of boundary for ccd 3')
-	if ccd==4:
-		if space==[]: space=np.linspace(7584,7887,4100)
-		if not any(7584<i<7887 for i in space): raise RuntimeError('Space is out of boundary for ccd 4')
-
-	#create a folder to store pickled spectra:
-	if not os.path.exists('pickled_spectra'):
-		os.makedirs('pickled_spectra')
-
-	#create a list of spectra:
-	if spectra==[]:
-		for path, dirs, files in os.walk(os.path.abspath(setup.folder)):
-			for filename in fnmatch.filter(files, '*%s.fits' % (ccd)):
-				spectra.append(filename[:-5])
-	
-	#read and interpolate spectra one by one:
-	block=[]
-	block_num=0
-	n=0
-	nn=0
-	for i in spectra:
-		if n==9999:#only 10000 spectra can be saved in one file
-			pickle.dump(block,open('%s/b%s.pickle' % (pickle_folder,block_num), 'wb'))
-			block_num+=1
-			n=0
-			block=[]
-		try:#if there is no normalized spectrum skip it
-			s=read(i, kind='norm', wavelength='default').interpolate(space)
-			block.append([i,s.f])
-			n+=1
-		except RuntimeError:
-			pass
-		nn+=1
-
-		if nn>=limit: break# stop reading spectra if limit is reached (to spare the memory or time when testing)
-
-		if nn%10 == 0: print nn, '/', len(spectra), "pickled."
-
-	
-	pickle.dump(block,open('%s/b%s.pickle' % (pickle_folder,block_num+1), 'wb'))
-	pickle.dump(space,open('%s/space.pickle' % (pickle_folder), 'wb'))
-
-	return space
 
 def cc(i1,i2):
 	"""
