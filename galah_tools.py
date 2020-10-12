@@ -1,24 +1,13 @@
 import logging
 import numpy as np
 from astropy.io import fits
-import owncloud
-import getpass
-#import psycopg2 as mdb
-#import csv
-#import os
-#import fnmatch
-#import cPickle as pickle
-#from scipy import spatial
-#import ftputil
+#import owncloud
 #import getpass
-#import copy
-#from sclip.sclip import sclip
-#from scipy.interpolate import UnivariateSpline
 import scipy
 from scipy import signal
-#from pyflann import *
 from matplotlib import *
 from pylab import *
+import copy
 
 class spectrum:
 	def __init__(self, name, kind='norm', extension=1, wavelength='default', linearize=True):
@@ -68,11 +57,12 @@ class spectrum:
 
 		self.f=hdulist[instance[kind]].data
 		self.fe=hdulist[2].data
-		self.map_f=hdulist[7].data
+		self.res_map=hdulist[7].data
 		crval=hdulist[instance[kind]].header['CRVAL1']
 		crdel=hdulist[instance[kind]].header['CDELT1']
 		self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
-		self.map_l=np.linspace(crval, crval+crdel*len(self.map_f), len(self.map_f))
+		self.map_l=np.linspace(crval, crval+crdel*len(self.res_map), len(self.res_map))
+		self.res_b=float(hdulist[7].header['b'])
 
 		#set radial velocity. This is needed if spectra is required in some other velocity frame than default
 		rv=hdulist[0].header['RV']
@@ -255,14 +245,20 @@ class spectrum:
 
 			self.convolve(s_conv,extend=True)
 
-	def equalize_resolution(self):
+	def equalize_resolution(self, r='lowest', precision=0.005, kernel='galah'):
 		"""
-		convolves a spectrum with a kernel with a variable width. Works by warping the data, performing the convolution and unwarping the data, so it is vectorized (mostly) and fast
+		Convolves a spectrum with a kernel with a variable width. Works by warping the data, performing the convolution and unwarping the data, so it is vectorized (mostly) and fast
+
+		Parameters:
+			r (str or float): resolution of resulting spectra. If r=='lowest', the resulting spectra will have the lowest resolution given in the resolution map
+			precision (float): precision of intermitten sampling. Lower number means better precision.
+			kernel (str): 'gauss' or 'galah' (default). Will either use a gaussian kernel or a kernel derived for GALAH as the konvolution kernel.
 		"""
 
 		#check if wavelength calibration is linear:
 		if (self.l[1]-self.l[0])==(self.l[-1]-self.l[-2]):
 			linear=True
+			l=self.l
 		else:
 			l=self.l
 			self.linearize()
@@ -272,39 +268,52 @@ class spectrum:
 		sampl=self.l[1]-self.l[0]
 
 		#target sigma coresponds to the R=22000. We want the constant sigma, not constant R, so take the sigma that corresponds to the average R=22000
-		s_target=np.ones(len(self.map_l))*np.average(self.map_l)/15000.
+		#s_target=np.ones(len(self.map_l))*np.average(self.map_l)/18400.
+		if r=='lowest':
+			s_target=np.ones(len(self.map_l))*max(self.res_map)*(1+precision)
+		elif isinstance(r, (int, long, float)):
+			s_target=self.res_map*(1+precision)
+			s_target[r>s_target]=r
+		else:
+			logging.error('Parameter r must be either \'lowest\' or a number.')
+
+		#original sigma
+		s_original=self.res_map
 
 		#the sigma of the kernel is:
-		s=np.sqrt(s_target**2-self.map_f**2)
+		s=np.sqrt(s_target**2-s_original**2)
+
 
 		#fit it with the polynomial, so we have a function instead of sampled values:
-		map_fit=np.poly1d(np.polyfit(self.map_l, s/sampl, deg=6))
+		map_fit=np.poly1d(np.polyfit(self.map_l, s, deg=6))
 
 		#create an array with new sampling. The first point is the same as in the spectrum:
 		l_new=[self.map_l[0]]
 
-		#and the sigma in pixels with which to convolve is
-		sampl=self.l[1]-self.l[0]
-		s_new=s/sampl/min(s/sampl)
+		#minimal needed sampling
+		min_sampl=max(s_original)/sampl/sampl
 
-		#now create the non linear sampling. It should be finer where sigma is larger and sparser where sigma is smaller
-		#IS THERE A WAY TO VECTORIZE THIS???
-		for i in range(int(len(self.l)*np.max(s_new)*min(s/sampl))):
-			l_new.append(l_new[i]+sampl/map_fit(l_new[i]))
+		#keep adding samples until end of the wavelength range is reached
+		while l_new[-1]<l[-1]+sampl:
+			l_new.append(l_new[-1]+map_fit(l_new[-1])/sampl/min_sampl)
 
 		#interpolate the spectrum to the new sampling:
 		new_f=np.interp(np.array(l_new),self.l,self.f)
 		new_fe=np.interp(np.array(l_new),self.l,self.fe)
 
-		plot(l_new, l_new-np.roll(l_new, 1), 'r,')
-		show()
+		#plot(l_new, l_new-np.roll(l_new, 1), 'r,')
+		#show()
 
-		#the kernel is min(s_orig/sampl) pixels large, so we oversample as little as possible (for the very best precision we should oversample more, but this takes time)
-		kernel=gauss_kern(min(s/sampl))
-
-		#convolve the warped spectrum:
-		con_f=signal.fftconvolve(new_f,kernel,mode='same')
-		con_fe=signal.fftconvolve(new_fe**2,kernel,mode='same')
+		#convolve
+		if kernel=='gauss':
+			kernel_=gauss_kern(max(s_original)/sampl)
+		elif kernel=='galah':
+			kernel_=galah_kern(max(s_original)/sampl, self.res_b)
+		else:
+			logging.error('Kernel %s is not available. Use gauss or galah.' % kernel)
+			return self
+		con_f=signal.fftconvolve(new_f,kernel_,mode='same')
+		con_fe=signal.fftconvolve(new_fe**2,kernel_,mode='same')
 
 		#inverse the warping:
 		self.f=np.interp(self.l,np.array(l_new),con_f)
@@ -385,35 +394,6 @@ class spectrum:
 			fname=setup.folder+self.name+'.txt'
 		np.savetxt(fname,zip(self.l,self.f,self.fe))
 
-class window_function:
-	window=[]
-	l=[]
-	def __init__(self,l,windows):
-		if windows=='':
-			window_function.window=np.array([1]*len(l))#if no file is given window function is constant 1
-		else:
-			window_function.window=read_windows(windows,l)
-
-		window_function.l=l
-
-	def plot_window(self):
-		"""
-		Plot the window function
-		"""
-		import matplotlib.pyplot as pl
-		fig=pl.figure('Window function (close to continue)')
-		pl.plot(window_function.l, window_function.window,'k-')
-		pl.xlabel('Wavelength / Angstroms')
-		pl.ylabel('Window value')
-		pl.title('Window function')
-		pl.show()
-
-	def clear(self):
-		"""
-		Clears a saved window function
-		"""
-		window_function.window=[]
-		window_function.l=[]
 
 class functions:
 	def __init__(self):
@@ -440,50 +420,106 @@ class setup:
 			if key=='download':
 				setup.download=kwargs['download']
 
+def sclip(p,fit,n,ye=[],sl=99999,su=99999,min=0,max=0,min_data=1,grow=0,global_mask=None,verbose=True):
+		"""
+		p: array of coordinate vectors. Last line in the array must be values that are fitted. The rest are coordinates.
+		fit: name of the fitting function. It must have arguments x,y,ye,and mask and return an array of values of the fitted function at coordinates x
+		n: number of iterations
+		ye: array of errors for each point
+		sl: lower limit in sigma units
+		su: upper limit in sigma units
+		min: number or fraction of rejected points below the fitted curve
+		max: number or fraction of rejected points above the fitted curve
+		min_data: minimal number of points that can still be used to make a constrained fit
+		global_mask: if initial mask is given it will be used throughout the whole fitting process, but the final fit will be evaluated also in the masked points
+		grow: number of points to reject around the rejected point.
+		verbose: print the results or not
+		"""
 
-def read_windows(filename,l):
-	windows=[]
-	cwindows=[]
+		nv,dim=np.shape(p)
 
-	#initially the window is set to constant 1
-	window=np.ones(len(l))
+		#if error vector is not given, assume errors are equal to 0:
+		if ye==[]: ye=np.zeros(dim)
+		#if a single number is given for y errors, assume it means the same error is for all points:
+		if isinstance(ye, (int, long, float)): ye=np.ones(dim)*ye
+		
+		if global_mask==None: global_mask=np.ones(dim, dtype=bool)
+		else: pass
+		
+		f_initial=fit(p,ye,global_mask)
+		s_initial=np.std(p[-1]-f_initial)
 
-	#read the file and save windows separately to those specified by lower and upepr limit and those specified by center and width
-	writeto=0
-	for line in open(filename, 'r'):
-		if len(line[:-1])==0: 
-			writeto=1
-			continue
-		if line[0]=='#': pass
-		else:
-			data=line[:-1].split('\t')
-			sign=data[-1][0]
-			data=map(float,data)
-			data=data+[sign]
-			if writeto==0:
-				windows.append(data)
-			else:
-				cwindows.append(data)
+		f=f_initial
+		s=s_initial
 
-	#transform one format into the other
-	for i in windows:
-		cwindows.append([(i[0]+i[1])/2.0, i[1]-i[0], i[2], i[3], i[4]])
+		tmp_results=[]
 
-	for w in cwindows:
-		if w[4]!='-':
-			for n,i in enumerate(l):
-				if abs(w[0]-i)<=(w[1]/2.0*(1-w[2])): window[n]*=w[3]
-				elif (w[0]+w[1]/2.0*(1-w[2]))<i<(w[0]+w[1]/2.0): window[n]*=(2-2*w[3])/(w[1]*w[2])*i+1-(1-w[3])/w[2]*(2*w[0]/w[1]+1)
-				elif (w[0]-w[1]/2.0*(1-w[2]))>i>(w[0]-w[1]/2.0): window[n]*=(2*w[3]-2)/(w[1]*w[2])*i+1-(w[3]-1)/w[2]*(2*w[0]/w[1]-1)
-				else: pass
-		else:
-			for n,i in enumerate(l):
-				if abs(w[0]-i)>=(w[1]/2.0): window[n]*=abs(w[3])
-				elif (w[0]+w[1]/2.0*(1-w[2]))<i<(w[0]+w[1]/2.0): window[n]*=(2*abs(w[3])-2)/(w[1]*w[2])*i+abs(w[3])-(abs(w[3])-1)/w[2]*(1+2.0*w[0]/w[1])
-				elif (w[0]-w[1]/2.0*(1-w[2]))>i>(w[0]-w[1]/2.0): window[n]*=(2-2*abs(w[3]))/(w[1]*w[2])*i+abs(w[3])-(1-abs(w[3]))/w[2]*(2.0*w[0]/w[1]-1)
-				else: pass
+		b_old=np.ones(dim, dtype=bool)
 
-	return window
+		for step in range(n):
+			#check that only sigmas or only min/max are given:
+			if (sl!=99999 or su!=99999) and (min!=0 or max!=0):
+				raise RuntimeError('Sigmas and min/max are given. Only one can be used.')
+
+			#if sigmas are given:
+			if sl!=99999 or su!=99999:
+				b=np.zeros(dim, dtype=bool)
+				if sl>=99999 and su!=sl: sl=su#check if only one is given. In this case set the other to the same value
+				if su>=99999 and sl!=su: su=sl
+
+				good_values=np.where(((f-p[-1])<(sl*(s+ye))) & ((f-p[-1])>-(su*(s+ye))))#find points that pass the sigma test
+				b[good_values]=True
+
+			#if min/max are given
+			if min!=0 or max!=0:
+				b=np.ones(dim, dtype=bool)
+				if min<1: min=dim*min#detect if min is in number of points or percentage
+				if max<1: max=dim*max#detect if max is in number of points or percentage
+
+				bad_values=np.concatenate(((p[-1]-f).argsort()[-int(max):], (p[-1]-f).argsort()[:int(min)]))
+				b[bad_values]=False
+
+			#check the grow parameter:
+			if grow>=1 and nv==2:
+				b_grown=np.ones(dim, dtype=bool)
+				for ind,val in enumerate(b):
+					if val==False:
+						ind_l=ind-int(grow)
+						ind_u=ind+int(grow)+1
+						if ind_l<0: ind_l=0
+						b_grown[ind_l:ind_u]=False
+
+				b=b_grown
+
+			tmp_results.append(f)
+
+			#check that the minimal number of good points is not too low:
+			if len(b[b])<min_data:
+				step=step-1
+				b=b_old
+				break
+
+			#check if the new b is the same as old one and break if yes:
+			if np.array_equal(b,b_old):
+				step=step-1
+				break
+
+			#fit again
+			f=fit(p,ye,b&global_mask)
+			s=np.std(p[-1][b]-f[b])
+			b_old=b
+
+		if verbose:
+			print ''
+			print 'FITTING RESULTS:'
+			print 'Number of iterations requested:    ',n
+			print 'Number of iterations performed:    ', step+1
+			print 'Initial standard deviation:        ', s_initial
+			print 'Final standard deviation:          ', s
+			print 'Number of rejected points:         ',len(np.invert(b[np.invert(b)]))
+			print ''
+		
+		return f,tmp_results,b
 
 def read(name, **kwargs):
 	"""
@@ -505,7 +541,10 @@ def cc(i1,i2):
 	for s in s1:
 		s.interpolate(s2.l)
 		ccf=np.correlate(s.f[10:-10]-np.average(s.f[10:-10]),s2.f[10:-10]-np.average(s2.f[10:-10]),mode='same')
-		max_index=np.argmax(ccf)
+		ccf_no_edges=ccf
+		ccf_no_edges[:4]=0
+		ccf_no_edges[-4:]=0
+		max_index=np.argmax(ccf_no_edges)
 		max_fit=np.polyfit(range(max_index-3,max_index+4),ccf[max_index-3:max_index+4],2)
 		max_fit= -max_fit[1]/(max_fit[0]*2.0)
 		diff=max_fit-len(ccf)/2.0
@@ -541,4 +580,13 @@ def gauss_kern(fwhm):
 	if size_grid<7: size_grid=7
 	x= scipy.mgrid[-size_grid:size_grid+1]
 	g = scipy.exp(-(x**2/float(size)))
+	return g / np.sum(g)
+
+def galah_kern(fwhm, b):
+	""" Returns a normalized 1D kernel as is used for GALAH resolution profile """
+	size=2*(fwhm/2.355)**2
+	size_grid = int(size) # we limit the size of kernel, so it is as small as possible (or minimal size) for faster calculations
+	if size_grid<7: size_grid=7
+	x= scipy.mgrid[-size_grid:size_grid+1]
+	g = scipy.exp(-0.693147*np.power(abs(2*x/fwhm), b))
 	return g / np.sum(g)
