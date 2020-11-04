@@ -430,7 +430,6 @@ class setup:
 	download=False
 
 	def __init__(self, **kwargs):
-		print kwargs
 		for key in kwargs:
 			if key=='folder':
 				setup.folder=kwargs['folder']
