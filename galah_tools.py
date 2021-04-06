@@ -1,8 +1,10 @@
+import os
 import logging
 import numpy as np
 from astropy.io import fits
-#import owncloud
-#import getpass
+import owncloud
+import getpass
+import tempfile
 import scipy
 from scipy import signal
 from matplotlib import *
@@ -32,24 +34,61 @@ class spectrum:
 		if setup.folder_is_root:
 			if name[10:12]=='00':
 				#reading uncombined spectra
-				path=setup.folder+str(self.date)+'/spectra/all/'+self.name+'.fits'
+				path=str(self.date)+'/spectra/all/'+self.name+'.fits'
 			elif name[10:12]=='01':
 				#readingh combined spectra
-				path=setup.folder+str(self.date)+'/spectra/com/'+self.name+'.fits'
+				path=str(self.date)+'/spectra/com/'+self.name+'.fits'
 			elif name[10:12]=='02':
 				#reading spectra combined over several epochs
-				path=setup.folder+str(self.date)+'/spectra/com2/'+self.name+'.fits'
+				path=str(self.date)+'/spectra/com2/'+self.name+'.fits'
 			else:
 				path=None
 		else:
 			#reding spectra from an exact folder
-			path=setup.folder+self.name+'.fits'
+			path=self.name+'.fits'
 		
 		try:#read if it exists
-			hdulist = fits.open(path)
+			hdulist = fits.open(setup.folder + path)
+
 		except:#otherwise download
-			logging.error('Spectrum %s not found. Enable download to get it from the ftp site.' % self.name)
-			raise
+			
+			ownloud_credentials = 'owncloud_login.txt'
+
+			try:
+				credentials = np.loadtxt(ownloud_credentials, dtype='S100')
+				uname = credentials[0]
+				pswrd = credentials[1]
+
+			except:
+				uname = getpass.getpass(prompt='Your username:')
+				pswrd = getpass.getpass(prompt='Your password:')
+				txt = open(ownloud_credentials, 'w')
+				txt.write(uname + '\n' + pswrd)
+				txt.close()
+			
+			oc = owncloud.Client('https://cloud.datacentral.org.au/')
+
+			# login to the Data Central cloud service
+			try:
+				oc.login(uname, pswrd)
+
+			except:
+				logging.error('Problem during Data Central login.' % self.name)
+				os.remove(ownloud_credentials)
+				raise 
+
+			# try to download requested spectrum into temporary folder and read it
+			try:
+				tmp = tempfile.mkdtemp()
+				oc.get_file('/GALAH/obs/reductions/Iraf_6.0/' + path, tmp + self.name + '.fits')
+				hdulist = fits.open(tmp + self.name + '.fits')
+				
+			except:
+				oc.logout()
+				logging.error('Unable to download spectrum %s.' % self.name)
+				raise
+
+			oc.logout()
 
 		#set l, f, and fe
 		# dict converting extension names to extension numbers
