@@ -325,6 +325,72 @@ class spectrum:
 
 		return self
 
+	def synth_resolution_degradation(self, synth, synth_res=300000.0):
+		"""
+		Take a synthetic spectrum with a very high  resolution and degrade its resolution to the resolution profile of the observed spectrum. The synthetic spectrum should not be undersampled, or the result of the convolution might be wrong.
+
+		Parameters:
+			synth np array or similar: an array representing the synthetic spectrum. Must have size m x 2. First column is the wavelength array, second column is the flux array. Resolution of the synthetic spectrum must be constant and higher than that of the observed spectrum.
+			synth_res (float): resolving power of the synthetic spectrum
+
+		Returns:
+			Convolved syntehtic spectrum as a np array of size m x 2.
+		"""
+
+		synth=np.array(synth)
+		l_original=synth[:,0]
+		#check if the shape of the synthetic spectrum is correct
+		if synth.shape[1]!=2: logging.error('Syntehtic spectrum must have shape m x 2.')
+
+		#check if the resolving power is high enough
+		sigma_synth=synth[:,0]/synth_res
+		if max(sigma_synth)>=min(self.res_map)*0.95: logging.error('Resolving power of the synthetic spectrum must be higher.')
+
+		#check if wavelength calibration of the synthetic spectrum is linear:
+		if not (synth[:,0][1]-synth[:,0][0])==(synth[:,0][-1]-synth[:,0][-2]):
+			logging.error('Synthetic spectrum must have linear (equidistant) sampling.')		
+
+		#current sampling:
+		sampl=synth[:,0][1]-synth[:,0][0]
+		galah_sampl=self.l[1]-self.l[0]
+
+		#original sigma
+		s_original=sigma_synth
+
+		#required sigma (resample the resolution map into the wavelength range of the synthetic spectrum)
+		s_out=np.interp(synth[:,0], self.l, self.res_map)
+
+		#the sigma of the kernel is:
+		s=np.sqrt(s_out**2-s_original**2)
+
+		#fit it with the polynomial, so we have a function instead of sampled values:
+		map_fit=np.poly1d(np.polyfit(synth[:,0], s, deg=6))
+
+		#create an array with new sampling. The first point is the same as in the spectrum:
+		l_new=[synth[:,0][0]]
+
+		#oversampling. If synthetic spectrum sampling is much finer than the size of the kernel, the code would work, but would return badly sampled spectrum. this is because from here on the needed sampling is measured in units of sigma.
+		oversample=galah_sampl/sampl*5.0
+
+		#minimal needed sampling
+		min_sampl=max(s_original)/sampl/sampl*oversample
+
+		#keep adding samples until end of the wavelength range is reached
+		while l_new[-1]<synth[:,0][-1]+sampl:
+			l_new.append(l_new[-1]+map_fit(l_new[-1])/sampl/min_sampl)
+
+		#interpolate the spectrum to the new sampling:
+		new_f=np.interp(np.array(l_new),synth[:,0],synth[:,1])
+
+		kernel_=galah_kern(max(s_original)/sampl*oversample, self.res_b)
+	
+		con_f=signal.fftconvolve(new_f,kernel_,mode='same')
+
+		#inverse the warping:
+		synth[:,1]=np.interp(l_original,np.array(l_new),con_f)
+		return synth
+
+
 	def median_filter(self,size, extend=False):
 		"""
 		do a standard median filtering. give size in Angstroms, will be translated to nearest odd number of pixels.
