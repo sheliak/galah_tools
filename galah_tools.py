@@ -13,7 +13,7 @@ class spectrum:
 	def __init__(self, name, kind='norm', extension=1, wavelength='default', linearize=True):
 		
 		#set atributes
-		if isinstance(name, basestring):
+		if isinstance(name, str):
 			pass
 		else:
 			name=str(int(name))
