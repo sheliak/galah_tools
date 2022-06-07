@@ -576,14 +576,14 @@ def sclip(p,fit,n,ye=[],sl=99999,su=99999,min=0,max=0,min_data=1,grow=0,global_m
 			b_old=b
 
 		if verbose:
-			print ''
-			print 'FITTING RESULTS:'
-			print 'Number of iterations requested:    ',n
-			print 'Number of iterations performed:    ', step+1
-			print 'Initial standard deviation:        ', s_initial
-			print 'Final standard deviation:          ', s
-			print 'Number of rejected points:         ',len(np.invert(b[np.invert(b)]))
-			print ''
+			print('')
+			print('FITTING RESULTS:')
+			print('Number of iterations requested:    ',n)
+			print('Number of iterations performed:    ', step+1)
+			print('Initial standard deviation:        ', s_initial)
+			print('Final standard deviation:          ', s)
+			print('Number of rejected points:         ',len(np.invert(b[np.invert(b)])))
+			print('')
 		
 		return f,tmp_results,b
 
