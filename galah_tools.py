@@ -46,7 +46,7 @@ class spectrum:
 			path=setup.folder+self.name+'.fits'
 		
 		try:#read if it exists
-			hdulist = fits.open(path)
+			self.hdulist = fits.open(path)
 		except:#otherwise download
 			logging.error('Spectrum %s not found. Enable download to get it from the ftp site.' % self.name)
 			raise
@@ -55,24 +55,32 @@ class spectrum:
 		# dict converting extension names to extension numbers
 		instance={'norm':1, 'normalized':1, 'normalised':1, 'flux':0, 'fluxed':0}
 
-		self.f=hdulist[instance[kind]].data
-		self.fe=hdulist[2].data
-		self.res_map=hdulist[7].data
-		crval=hdulist[instance[kind]].header['CRVAL1']
-		crdel=hdulist[instance[kind]].header['CDELT1']
+		self.f=self.hdulist[instance[kind]].data
+		self.fe=self.hdulist[2].data
+		self.res_map=self.hdulist[7].data
+		crval=self.get_param('CRVAL1', ext=instance[kind])
+		crdel=self.get_param('CDELT1', ext=instance[kind])
 		self.l=np.linspace(crval, crval+crdel*len(self.f), len(self.f))
 		self.map_l=np.linspace(crval, crval+crdel*len(self.res_map), len(self.res_map))
-		self.res_b=float(hdulist[7].header['b'])
+
+		res_b=self.get_param('B', ext=7)
+		if res_b is None:
+			self.res_b = np.nan
+		else:
+			self.res_b = float(res_b)
+
+		if len(self.res_map) == 1 or not np.isfinite(self.res_b):
+			logging.warning('Resolution changes can not be performed for spectrum %s' % self.name)
 
 		#set radial velocity. This is needed if spectra is required in some other velocity frame than default
-		rv=hdulist[0].header['RV']
+		rv=self.get_param('RVCOM')
 		if rv=='None':
 			self.rv=None
 		else:
 			self.rv=rv
 
 		#set v_bary. This is needed if spectra is required in some other velocity frame than default
-		bary=hdulist[0].header['BARYEFF']
+		bary=self.get_param('BARYEFF')
 		if bary=='None':
 			self.vb=None
 		else:
@@ -451,7 +459,6 @@ class spectrum:
 		hdulist.flush()
 		hdulist.close()
 
-
 	def save_ascii(self, fname=None):
 		"""
 		save the spectrum into an ascii text file with three columns; wavelength, flux, error
@@ -460,6 +467,23 @@ class spectrum:
 			fname=setup.folder+self.name+'.txt'
 		np.savetxt(fname,zip(self.l,self.f,self.fe))
 
+	def get_param(self, param, ext=0):
+		"""
+		Return spectral information or parameter that is written in header. All extensions should have the same set of information.
+		"""
+		param_get = param.upper()
+		if param_get in self.hdulist[ext].header.keys():
+			return self.hdulist[ext].header[param_get]
+		else:
+			logging.error('Parameter %s was not found in extension %d of spectrum %s.' % (param_get, ext, self.name))
+			return None
+
+	def close(self):
+		"""
+		close opened fits file
+		"""
+		self.hdulist.close()
+		return None
 
 class functions:
 	def __init__(self):
@@ -485,6 +509,7 @@ class setup:
 
 			if key=='download':
 				setup.download=kwargs['download']
+
 
 def sclip(p,fit,n,ye=[],sl=99999,su=99999,min=0,max=0,min_data=1,grow=0,global_mask=None,verbose=True):
 		"""
@@ -587,12 +612,14 @@ def sclip(p,fit,n,ye=[],sl=99999,su=99999,min=0,max=0,min_data=1,grow=0,global_m
 		
 		return f,tmp_results,b
 
+
 def read(name, **kwargs):
 	"""
 	reads one spectrum
 	"""
 	spec=spectrum(name, **kwargs)
 	return spec
+
 
 def cc(i1,i2):
 	"""
@@ -621,23 +648,25 @@ def cc(i1,i2):
 		return ccs[0]
 	else:	
 		return np.array(ccs)
-		
-		
+			
 
 def chebyshev(p,ye,mask):
 	coef=np.polynomial.chebyshev.chebfit(p[0][mask], p[1][mask], functions.deg)
 	cont=np.polynomial.chebyshev.chebval(p[0],coef)
 	return cont
 
+
 def poly(p,ye,mask):
 	r=np.polyfit(p[0][mask], p[1][mask], deg=functions.deg)
 	f=np.poly1d(r)
 	return f(p[0])
 
+
 def spline(p,ye,mask):
 	spl = UnivariateSpline(p[0][mask], p[1][mask],k=functions.deg)
 	spl.set_smoothing_factor(5000000)
 	return spl(p[0])
+
 
 def gauss_kern(fwhm):
 	""" Returns a normalized 1D gauss kernel array for convolutions """
@@ -647,6 +676,7 @@ def gauss_kern(fwhm):
 	x= scipy.mgrid[-size_grid:size_grid+1]
 	g = scipy.exp(-(x**2/float(size)))
 	return g / np.sum(g)
+
 
 def galah_kern(fwhm, b):
 	""" Returns a normalized 1D kernel as is used for GALAH resolution profile """
